@@ -2,7 +2,7 @@ package main
 
 import (
 	"github.com/gorilla/mux"
-	"io/ioutil"
+	"io"
 	"math/rand"
 	"net/http"
 )
@@ -13,9 +13,9 @@ func main() {
 	m = make(map[string]string)
 	router := mux.NewRouter()
 
-	router.HandleFunc("/", createUrl).Methods(http.MethodPost)
+	router.HandleFunc("/", createURL).Methods(http.MethodPost)
 
-	router.HandleFunc("/{id}", getUrlById).Methods(http.MethodGet)
+	router.HandleFunc("/{id}", getURLByID).Methods(http.MethodGet)
 
 	err := http.ListenAndServe(":8080", router)
 	if err != nil {
@@ -23,9 +23,9 @@ func main() {
 	}
 }
 
-func createUrl(w http.ResponseWriter, r *http.Request) {
+func createURL(w http.ResponseWriter, r *http.Request) {
 	if contentType := r.Header.Get("Content-Type"); contentType == "text/plain" {
-		url, err := ioutil.ReadAll(r.Body)
+		url, err := io.ReadAll(r.Body)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			return
@@ -39,7 +39,7 @@ func createUrl(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func getUrlById(w http.ResponseWriter, r *http.Request) {
+func getURLByID(w http.ResponseWriter, r *http.Request) {
 	id := mux.Vars(r)["id"]
 	url, ok := m[id]
 	if !ok {
