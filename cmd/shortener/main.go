@@ -27,7 +27,7 @@ func main() {
 }
 
 func createURL(w http.ResponseWriter, r *http.Request) {
-	if contentType := r.Header.Get("Content-Type"); contentType == "text/plain" {
+	if contentType := r.Header.Get("Content-Type"); contentType == "text/plain; charset=utf-8" {
 		body, err := io.ReadAll(r.Body)
 
 		if err != nil {
