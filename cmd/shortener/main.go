@@ -58,24 +58,20 @@ func createURL(w http.ResponseWriter, r *http.Request) {
 }
 
 func getURLByID(w http.ResponseWriter, r *http.Request) {
-	if contentType := r.Header.Get("Content-Type"); contentType == "text/plain" {
-		vars := mux.Vars(r)
-		id, ok := vars["id"]
-		if !ok {
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-		link, ok := urlMap[id]
-		if !ok {
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-		w.Header().Add("Content-Type", "text/plain")
-		http.Redirect(w, r, link, http.StatusTemporaryRedirect)
-	} else {
+	vars := mux.Vars(r)
+	id, ok := vars["id"]
+	if !ok {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
+	link, ok := urlMap[id]
+	if !ok {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	w.Header().Add("Content-Type", "text/plain")
+	http.Redirect(w, r, link, http.StatusTemporaryRedirect)
+
 }
 
 var charset = []byte("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
