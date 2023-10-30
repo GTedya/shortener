@@ -12,7 +12,7 @@
 Чтобы иметь возможность получать обновления автотестов и других частей шаблона, выполните команду:
 
 ```
-git remote add -m main template https://github.com/Yandex-Practicum/go-musthave-shortener-tpl.git
+git remote add -urlMap main template https://github.com/Yandex-Practicum/go-musthave-shortener-tpl.git
 ```
 
 Для обновления кода автотестов выполните команду:
