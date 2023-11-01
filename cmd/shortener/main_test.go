@@ -113,6 +113,7 @@ func Test_getURLByID(t *testing.T) {
 			r.ServeHTTP(recorder, req)
 
 			res := recorder.Result()
+			defer res.Body.Close()
 
 			assert.Equal(t, test.want.code, res.StatusCode)
 
