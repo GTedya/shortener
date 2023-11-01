@@ -9,10 +9,10 @@ import (
 	"net/url"
 )
 
-var UrlMap map[string]string
+var URLMap map[string]string
 
 func main() {
-	UrlMap = make(map[string]string)
+	URLMap = make(map[string]string)
 
 	router := mux.NewRouter()
 
@@ -41,7 +41,7 @@ func createURL(w http.ResponseWriter, r *http.Request) {
 
 		id := GenerateTestURL(8)
 		encodedID := url.PathEscape(id)
-		UrlMap[encodedID] = string(body)
+		URLMap[encodedID] = string(body)
 
 		w.Header().Add("Content-Type", "text/plain")
 		w.WriteHeader(http.StatusCreated)
@@ -60,7 +60,7 @@ func createURL(w http.ResponseWriter, r *http.Request) {
 func getURLByID(w http.ResponseWriter, r *http.Request) {
 	id := mux.Vars(r)["id"]
 
-	link, ok := UrlMap[id]
+	link, ok := URLMap[id]
 
 	if !ok {
 		w.WriteHeader(http.StatusBadRequest)

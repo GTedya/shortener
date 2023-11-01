@@ -12,7 +12,7 @@ import (
 )
 
 func Test_createURL(t *testing.T) {
-	UrlMap = make(map[string]string)
+	URLMap = make(map[string]string)
 
 	type args struct {
 		url         string
@@ -68,8 +68,8 @@ func Test_createURL(t *testing.T) {
 }
 
 func Test_getURLByID(t *testing.T) {
-	UrlMap = make(map[string]string)
-	UrlMap["testID"] = "https://example.com"
+	URLMap = make(map[string]string)
+	URLMap["testID"] = "https://example.com"
 
 	type args struct {
 		url         string
@@ -93,7 +93,7 @@ func Test_getURLByID(t *testing.T) {
 			want: want{
 				code:        307,
 				contentType: "text/plain",
-				location:    UrlMap["testID"],
+				location:    URLMap["testID"],
 			},
 			args: args{
 				url:         "http://localhost:8080/testID",
