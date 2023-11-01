@@ -9,10 +9,10 @@ import (
 	"net/url"
 )
 
-var urlMap map[string]string
+var UrlMap map[string]string
 
 func main() {
-	urlMap = make(map[string]string)
+	UrlMap = make(map[string]string)
 
 	router := mux.NewRouter()
 
@@ -39,9 +39,9 @@ func createURL(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		id := generateTestURL(8)
+		id := GenerateTestURL(8)
 		encodedID := url.PathEscape(id)
-		urlMap[encodedID] = string(body)
+		UrlMap[encodedID] = string(body)
 
 		w.Header().Add("Content-Type", "text/plain")
 		w.WriteHeader(http.StatusCreated)
@@ -58,25 +58,21 @@ func createURL(w http.ResponseWriter, r *http.Request) {
 }
 
 func getURLByID(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	id, ok := vars["id"]
-	if !ok {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-	link, ok := urlMap[id]
+	id := mux.Vars(r)["id"]
+
+	link, ok := UrlMap[id]
+
 	if !ok {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 	w.Header().Add("Content-Type", "text/plain")
 	http.Redirect(w, r, link, http.StatusTemporaryRedirect)
-
 }
 
 var charset = []byte("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
 
-func generateTestURL(n int) string {
+func GenerateTestURL(n int) string {
 	b := make([]byte, n)
 	for i := range b {
 		b[i] = charset[rand.Intn(len(charset))]
