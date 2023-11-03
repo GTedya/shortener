@@ -41,8 +41,8 @@ func createURL(w http.ResponseWriter, r *http.Request) {
 		}
 
 		var id string
-		if config.BasicUrl != "" {
-			id = config.BasicUrl
+		if config.BasicURL != "" {
+			id = config.BasicURL
 		} else {
 			id = GenerateTestURL(8)
 		}
@@ -53,7 +53,7 @@ func createURL(w http.ResponseWriter, r *http.Request) {
 		w.Header().Add("Content-Type", "text/plain")
 		w.WriteHeader(http.StatusCreated)
 
-		_, err = w.Write([]byte("http://localhost" + config.FlagRunAddr + "/" + encodedID))
+		_, err = w.Write([]byte(encodedID))
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			return
