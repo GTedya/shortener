@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/gorilla/mux"
+	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"io"
@@ -104,8 +104,8 @@ func Test_getURLByID(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			r := mux.NewRouter()
-			r.HandleFunc("/{id:[a-zA-Z0-9]+}", getURLByID).Methods(http.MethodGet)
+			r := chi.NewRouter()
+			r.Get("/{id:[a-zA-Z0-9]+}", getURLByID)
 
 			req := httptest.NewRequest(http.MethodGet, "/testID", nil)
 			recorder := httptest.NewRecorder()

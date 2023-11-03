@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"github.com/gorilla/mux"
+	"github.com/go-chi/chi/v5"
 	"io"
 	"math/rand"
 	"net/http"
@@ -14,10 +14,10 @@ var URLMap map[string]string
 func main() {
 	URLMap = make(map[string]string)
 
-	router := mux.NewRouter()
+	router := chi.NewRouter()
 
-	router.HandleFunc("/{id}", getURLByID).Methods(http.MethodGet)
-	router.HandleFunc("/", createURL).Methods(http.MethodPost)
+	router.Get("/{id}", getURLByID)
+	router.Post("/", createURL)
 
 	err := http.ListenAndServe(":8080", router)
 	if err != nil {
@@ -58,7 +58,7 @@ func createURL(w http.ResponseWriter, r *http.Request) {
 }
 
 func getURLByID(w http.ResponseWriter, r *http.Request) {
-	id := mux.Vars(r)["id"]
+	id := chi.URLParam(r, "id")
 
 	link, ok := URLMap[id]
 
