@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/GTedya/shortener/config"
 	"github.com/go-chi/chi/v5"
 	"io"
 	"math/rand"
@@ -18,8 +19,8 @@ func main() {
 
 	router.Get("/{id}", getURLByID)
 	router.Post("/", createURL)
-
-	err := http.ListenAndServe(":8080", router)
+	config.ParseFlags()
+	err := http.ListenAndServe(config.FlagRunAddr, router)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -39,14 +40,20 @@ func createURL(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		id := GenerateTestURL(8)
+		var id string
+		if config.BasicUrl != "" {
+			id = config.BasicUrl
+		} else {
+			id = GenerateTestURL(8)
+		}
+
 		encodedID := url.PathEscape(id)
 		URLMap[encodedID] = string(body)
 
 		w.Header().Add("Content-Type", "text/plain")
 		w.WriteHeader(http.StatusCreated)
 
-		_, err = w.Write([]byte("http://localhost:8080/" + encodedID))
+		_, err = w.Write([]byte("http://localhost" + config.FlagRunAddr + "/" + encodedID))
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			return
