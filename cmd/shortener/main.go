@@ -53,7 +53,7 @@ func createURL(w http.ResponseWriter, r *http.Request) {
 		w.Header().Add("Content-Type", "text/plain")
 		w.WriteHeader(http.StatusCreated)
 
-		_, err = w.Write([]byte(encodedID))
+		_, err = w.Write([]byte(`http://localhost` + config.FlagRunAddr + "/" + encodedID))
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			return
