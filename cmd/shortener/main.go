@@ -40,7 +40,7 @@ func createURL(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		id := config.BasicURL + GenerateTestURL(8-len(config.BasicURL))
+		id := config.BasicURL + GenerateTestURL(6)
 
 		encodedID := url.PathEscape(id)
 		URLMap[encodedID] = string(body)
