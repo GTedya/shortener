@@ -1,6 +1,9 @@
 package main
 
 import (
+	"github.com/GTedya/shortener/config"
+	"github.com/GTedya/shortener/internal/app"
+	"github.com/GTedya/shortener/internal/helpers"
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -12,7 +15,12 @@ import (
 )
 
 func Test_createURL(t *testing.T) {
-	URLMap = make(map[string]string)
+	conf := new(config.Config)
+	conf.AnnounceConfig()
+
+	data := helpers.URLData{
+		URLMap: make(map[string]string),
+	}
 
 	type args struct {
 		url         string
@@ -50,7 +58,7 @@ func Test_createURL(t *testing.T) {
 			request.Header.Add("Content-Type", test.args.contentType)
 
 			w := httptest.NewRecorder()
-			createURL(w, request)
+			app.CreateURL(w, request, conf, &data)
 
 			res := w.Result()
 
@@ -68,8 +76,10 @@ func Test_createURL(t *testing.T) {
 }
 
 func Test_getURLByID(t *testing.T) {
-	URLMap = make(map[string]string)
-	URLMap["testID"] = "https://example.com"
+	data := helpers.URLData{
+		URLMap: make(map[string]string),
+	}
+	data.URLMap["testID"] = "http://localhost:8080/testID"
 
 	type args struct {
 		url         string
@@ -93,7 +103,7 @@ func Test_getURLByID(t *testing.T) {
 			want: want{
 				code:        307,
 				contentType: "text/plain",
-				location:    URLMap["testID"],
+				location:    data.URLMap["testID"],
 			},
 			args: args{
 				url:         "http://localhost:8080/testID",
@@ -105,7 +115,9 @@ func Test_getURLByID(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			r := chi.NewRouter()
-			r.Get("/{id:[a-zA-Z0-9]+}", getURLByID)
+			r.Get("/{id:[a-zA-Z0-9]+}", func(writer http.ResponseWriter, request *http.Request) {
+				app.GetURLByID(writer, request, data)
+			})
 
 			req := httptest.NewRequest(http.MethodGet, "/testID", nil)
 			recorder := httptest.NewRecorder()

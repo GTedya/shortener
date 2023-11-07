@@ -5,19 +5,23 @@ import (
 	"os"
 )
 
-var FlagRunAddr string
-var BasicURL string
+type Config struct {
+	Address string
+	URL     string
+}
 
-func ParseFlags() {
-	flag.StringVar(&FlagRunAddr, "a", "localhost:8080", "address and port to run server")
-	flag.StringVar(&BasicURL, "b", "", "basic shorten URL")
+func (c *Config) AnnounceConfig() {
+	flag.StringVar(&c.Address, "a", "localhost:8080", "address and port to run server")
+	flag.StringVar(&c.URL, "b", "", "basic shorten URL")
 	flag.Parse()
 
-	if os.Getenv("SERVER_ADDRESS") != "" {
-		FlagRunAddr = os.Getenv("SERVER_ADDRESS")
+	serverAddress, ok := os.LookupEnv("SERVER_ADDRESS")
+	if ok {
+		c.Address = serverAddress
 	}
 
-	if os.Getenv("BASE_URL") != "" {
-		BasicURL = os.Getenv("BASE_URL")
+	url, ok := os.LookupEnv("BASE_URL")
+	if ok {
+		c.URL = url
 	}
 }
