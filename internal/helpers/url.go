@@ -11,7 +11,7 @@ type URLData struct {
 
 func (u URLData) GetByShortenURL(url string) (string, error) {
 	link, ok := u.URLMap[url]
-	if ok != true {
+	if !ok {
 		return "", fmt.Errorf("неверный адресс URL")
 	}
 	return link, nil
