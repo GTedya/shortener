@@ -1,8 +1,7 @@
-package main
+package handlers
 
 import (
 	"github.com/GTedya/shortener/config"
-	"github.com/GTedya/shortener/internal/app"
 	"github.com/GTedya/shortener/internal/helpers"
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
@@ -15,13 +14,10 @@ import (
 )
 
 func Test_createURL(t *testing.T) {
-	conf := new(config.Config)
-	conf.AnnounceConfig()
-
+	conf := config.GetConfig()
 	data := helpers.URLData{
 		URLMap: make(map[string]string),
 	}
-
 	type args struct {
 		url         string
 		method      string
@@ -58,13 +54,17 @@ func Test_createURL(t *testing.T) {
 			request.Header.Add("Content-Type", test.args.contentType)
 
 			w := httptest.NewRecorder()
-			app.CreateURL(w, request, conf, &data)
+
+			h := &handler{}
+			h.CreateURL(w, request, conf, &data)
 
 			res := w.Result()
 
 			assert.Equal(t, test.want.code, res.StatusCode)
 
-			defer res.Body.Close()
+			defer func() {
+				_ = res.Body.Close()
+			}()
 			resBody, err := io.ReadAll(res.Body)
 			require.NotEmpty(t, resBody)
 
@@ -115,8 +115,9 @@ func Test_getURLByID(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			r := chi.NewRouter()
+			h := &handler{}
 			r.Get("/{id:[a-zA-Z0-9]+}", func(writer http.ResponseWriter, request *http.Request) {
-				app.GetURLByID(writer, request, data)
+				h.GetURLByID(writer, request, data)
 			})
 
 			req := httptest.NewRequest(http.MethodGet, "/testID", nil)
@@ -125,8 +126,9 @@ func Test_getURLByID(t *testing.T) {
 			r.ServeHTTP(recorder, req)
 
 			res := recorder.Result()
-			defer res.Body.Close()
-
+			defer func() {
+				_ = res.Body.Close()
+			}()
 			assert.Equal(t, test.want.code, res.StatusCode)
 
 			assert.Equal(t, test.want.contentType, res.Header.Get("Content-Type"))

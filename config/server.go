@@ -10,9 +10,9 @@ type Config struct {
 	URL     string
 }
 
-func (c *Config) AnnounceConfig() {
+func GetConfig() (c Config) {
 	flag.StringVar(&c.Address, "a", "localhost:8080", "address and port to run server")
-	flag.StringVar(&c.URL, "b", "", "basic shorten URL")
+	flag.StringVar(&c.URL, "b", "short", "basic shorten URL")
 	flag.Parse()
 
 	serverAddress, ok := os.LookupEnv("SERVER_ADDRESS")
@@ -24,4 +24,5 @@ func (c *Config) AnnounceConfig() {
 	if ok {
 		c.URL = url
 	}
+	return c
 }
