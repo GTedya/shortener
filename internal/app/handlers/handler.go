@@ -21,7 +21,6 @@ func (h *handler) Register(router *chi.Mux, conf config.Config) {
 	data := helpers.URLData{
 		URLMap: make(map[string]string),
 	}
-
 	router.Post("/", func(writer http.ResponseWriter, request *http.Request) {
 		h.CreateURL(writer, request, conf, &data)
 	})
