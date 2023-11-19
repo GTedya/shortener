@@ -176,7 +176,7 @@ func TestJsonHandler(t *testing.T) {
 
 			w := httptest.NewRecorder()
 
-			h.CreateJsonURL(w, request, conf, &data)
+			h.URLByJSON(w, request, conf, &data)
 			assert.Equal(t, test.expectedStatus, w.Code)
 		})
 	}

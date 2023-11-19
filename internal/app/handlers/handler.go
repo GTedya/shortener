@@ -32,7 +32,7 @@ func (h *handler) Register(router *chi.Mux, conf config.Config) {
 	})
 
 	router.Post("/api/shorten", func(writer http.ResponseWriter, request *http.Request) {
-		h.CreateJsonURL(writer, request, conf, &data)
+		h.URLByJSON(writer, request, conf, &data)
 	})
 }
 
@@ -60,7 +60,7 @@ func (h *handler) CreateURL(w http.ResponseWriter, r *http.Request, conf config.
 	w.Header().Add("Content-Type", "text/plain")
 	w.WriteHeader(http.StatusCreated)
 
-	_, err = w.Write([]byte(fmt.Sprintf("https://%s/%s", conf.Address, encodedID.URL)))
+	_, err = w.Write([]byte(fmt.Sprintf("http://%s/%s", conf.Address, encodedID.URL)))
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
@@ -80,7 +80,7 @@ func (h *handler) GetURLByID(w http.ResponseWriter, r *http.Request, data helper
 	http.Redirect(w, r, shortenURL.URL, http.StatusTemporaryRedirect)
 }
 
-func (h *handler) CreateJsonURL(w http.ResponseWriter, r *http.Request, conf config.Config, data *helpers.URLData) {
+func (h *handler) URLByJSON(w http.ResponseWriter, r *http.Request, conf config.Config, data *helpers.URLData) {
 	log := logger.CreateLogger()
 
 	contentType := r.Header.Get("Content-Type")
