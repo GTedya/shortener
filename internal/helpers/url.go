@@ -6,13 +6,21 @@ import (
 )
 
 type URLData struct {
-	URLMap map[string]string
+	URLMap map[ShortURL]URL
 }
 
-func (u URLData) GetByShortenURL(url string) (string, error) {
-	link, ok := u.URLMap[url]
+type URL struct {
+	URL string `json:"url"`
+}
+
+type ShortURL struct {
+	URL string `json:"result"`
+}
+
+func (u URLData) GetByShortenURL(url string) (URL, error) {
+	link, ok := u.URLMap[ShortURL{url}]
 	if !ok {
-		return "", fmt.Errorf("неверный адресс URL")
+		return URL{}, fmt.Errorf("неверный адресс URL")
 	}
 	return link, nil
 }

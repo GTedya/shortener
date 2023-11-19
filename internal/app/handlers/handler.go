@@ -1,8 +1,10 @@
 package handlers
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/GTedya/shortener/config"
+	"github.com/GTedya/shortener/internal/app/logger"
 	"github.com/GTedya/shortener/internal/helpers"
 	"github.com/go-chi/chi/v5"
 	"io"
@@ -19,7 +21,7 @@ func NewHandler() Handler {
 
 func (h *handler) Register(router *chi.Mux, conf config.Config) {
 	data := helpers.URLData{
-		URLMap: make(map[string]string),
+		URLMap: make(map[helpers.ShortURL]helpers.URL),
 	}
 	router.Post("/", func(writer http.ResponseWriter, request *http.Request) {
 		h.CreateURL(writer, request, conf, &data)
@@ -27,6 +29,10 @@ func (h *handler) Register(router *chi.Mux, conf config.Config) {
 
 	router.Get("/{id}", func(writer http.ResponseWriter, request *http.Request) {
 		h.GetURLByID(writer, request, data)
+	})
+
+	router.Post("/api/shorten", func(writer http.ResponseWriter, request *http.Request) {
+		h.CreateJsonURL(writer, request, conf, &data)
 	})
 }
 
@@ -47,14 +53,14 @@ func (h *handler) CreateURL(w http.ResponseWriter, r *http.Request, conf config.
 		return
 	}
 	id := conf.URL + helpers.GenerateURL(6)
-	encodedID := url.PathEscape(id)
+	encodedID := helpers.ShortURL{URL: url.PathEscape(id)}
 
-	data.URLMap[encodedID] = string(body)
+	data.URLMap[encodedID] = helpers.URL{URL: string(body)}
 
 	w.Header().Add("Content-Type", "text/plain")
 	w.WriteHeader(http.StatusCreated)
 
-	_, err = w.Write([]byte(fmt.Sprintf("http://%s/%s", conf.Address, encodedID)))
+	_, err = w.Write([]byte(fmt.Sprintf("https://%s/%s", conf.Address, encodedID.URL)))
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
@@ -71,5 +77,48 @@ func (h *handler) GetURLByID(w http.ResponseWriter, r *http.Request, data helper
 	}
 
 	w.Header().Add("Content-Type", "text/plain")
-	http.Redirect(w, r, shortenURL, http.StatusTemporaryRedirect)
+	http.Redirect(w, r, shortenURL.URL, http.StatusTemporaryRedirect)
+}
+
+func (h *handler) CreateJsonURL(w http.ResponseWriter, r *http.Request, conf config.Config, data *helpers.URLData) {
+	log := logger.CreateLogger()
+
+	contentType := r.Header.Get("Content-Type")
+	if contentType != "application/json" {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	body, err := io.ReadAll(r.Body)
+
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	if len(body) == 0 {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	var u helpers.URL
+	err = json.Unmarshal(body, &u)
+	if err != nil {
+		log.Fatal(err)
+	}
+	id := conf.URL + helpers.GenerateURL(6)
+
+	encodedID := helpers.ShortURL{URL: url.PathEscape(id)}
+	data.URLMap[encodedID] = u
+
+	w.WriteHeader(http.StatusCreated)
+
+	encodedID = helpers.ShortURL{URL: fmt.Sprintf("http://%s/%s", conf.Address, url.PathEscape(id))}
+	marshal, err := json.Marshal(encodedID)
+	if err != nil {
+		return
+	}
+
+	_, err = w.Write(marshal)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
 }

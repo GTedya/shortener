@@ -14,9 +14,9 @@ import (
 )
 
 func Test_createURL(t *testing.T) {
-	conf := config.GetConfig()
+	conf := config.Config{Address: "localhost:8080", URL: "short"}
 	data := helpers.URLData{
-		URLMap: make(map[string]string),
+		URLMap: make(map[helpers.ShortURL]helpers.URL),
 	}
 	type args struct {
 		url         string
@@ -76,9 +76,9 @@ func Test_createURL(t *testing.T) {
 
 func Test_getURLByID(t *testing.T) {
 	data := helpers.URLData{
-		URLMap: make(map[string]string),
+		URLMap: make(map[helpers.ShortURL]helpers.URL),
 	}
-	data.URLMap["testID"] = "http://localhost:8080/testID"
+	data.URLMap[helpers.ShortURL{URL: "testID"}] = helpers.URL{URL: "http://localhost:8080/testID"}
 
 	type args struct {
 		url         string
@@ -102,7 +102,7 @@ func Test_getURLByID(t *testing.T) {
 			want: want{
 				code:        307,
 				contentType: "text/plain",
-				location:    data.URLMap["testID"],
+				location:    data.URLMap[helpers.ShortURL{URL: "testID"}].URL,
 			},
 			args: args{
 				url:         "http://localhost:8080/testID",
@@ -133,4 +133,51 @@ func Test_getURLByID(t *testing.T) {
 		})
 	}
 
+}
+
+func TestJsonHandler(t *testing.T) {
+	conf := config.Config{Address: "localhost:8080", URL: "short"}
+	data := helpers.URLData{
+		URLMap: make(map[helpers.ShortURL]helpers.URL),
+	}
+	h := &handler{}
+
+	// Test cases
+	tests := []struct {
+		name           string
+		contentType    string
+		body           string
+		expectedStatus int
+	}{
+		{
+			name:           "Valid JSON",
+			contentType:    "application/json",
+			body:           `{"url": "https://example.com"}`,
+			expectedStatus: http.StatusCreated,
+		},
+		{
+			name:           "Invalid Content-Type",
+			contentType:    "text/plain",
+			body:           `{"url": "https://example.com"}`,
+			expectedStatus: http.StatusBadRequest,
+		},
+		{
+			name:           "Empty Body",
+			contentType:    "application/json",
+			body:           "",
+			expectedStatus: http.StatusBadRequest,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			request := httptest.NewRequest(http.MethodPost, "http://localhost:8080/api/shorten/", strings.NewReader(test.body))
+			request.Header.Add("Content-Type", test.contentType)
+
+			w := httptest.NewRecorder()
+
+			h.CreateJsonURL(w, request, conf, &data)
+			assert.Equal(t, test.expectedStatus, w.Code)
+		})
+	}
 }
