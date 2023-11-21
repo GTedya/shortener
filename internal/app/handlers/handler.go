@@ -81,8 +81,6 @@ func (h *handler) GetURLByID(w http.ResponseWriter, r *http.Request, data helper
 }
 
 func (h *handler) URLByJSON(w http.ResponseWriter, r *http.Request, conf config.Config, data *helpers.URLData) {
-	log := logger.CreateLogger()
-
 	contentType := r.Header.Get("Content-Type")
 	if contentType != "application/json" {
 		w.WriteHeader(http.StatusBadRequest)
@@ -98,16 +96,18 @@ func (h *handler) URLByJSON(w http.ResponseWriter, r *http.Request, conf config.
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
+	log := logger.CreateLogger()
+
 	var u helpers.URL
 	err = json.Unmarshal(body, &u)
 	if err != nil {
-		log.Fatal(err)
+		log.Error(err)
 	}
 	id := conf.URL + helpers.GenerateURL(6)
 
 	encodedID := helpers.ShortURL{URL: url.PathEscape(id)}
 	data.URLMap[encodedID] = u
-
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 
 	encodedID = helpers.ShortURL{URL: fmt.Sprintf("http://%s/%s", conf.Address, url.PathEscape(id))}
