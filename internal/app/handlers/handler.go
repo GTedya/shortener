@@ -10,6 +10,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 )
 
 type handler struct {
@@ -38,7 +39,7 @@ func (h *handler) Register(router *chi.Mux, conf config.Config) {
 
 func (h *handler) CreateURL(w http.ResponseWriter, r *http.Request, conf config.Config, data *helpers.URLData) {
 	contentType := r.Header.Get("Content-Type")
-	if contentType != "text/plain; charset=utf-8" {
+	if strings.Contains(contentType, "text/plain; charset=utf-8") {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
