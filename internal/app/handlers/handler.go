@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"bytes"
+	"compress/gzip"
 	"encoding/json"
 	"fmt"
 	"github.com/GTedya/shortener/config"
@@ -10,6 +12,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 )
 
 type handler struct {
@@ -38,6 +41,7 @@ func (h *handler) Register(router *chi.Mux, conf config.Config) {
 
 func (h *handler) CreateURL(w http.ResponseWriter, r *http.Request, conf config.Config, data *helpers.URLData) {
 	body, err := io.ReadAll(r.Body)
+	log := logger.CreateLogger()
 
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -47,8 +51,24 @@ func (h *handler) CreateURL(w http.ResponseWriter, r *http.Request, conf config.
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
+
+	contentType := r.Header.Get("Content-Type")
+
+	if strings.Contains(contentType, "application/x-gzip") {
+		reader, err := gzip.NewReader(bytes.NewReader(body))
+		if err != nil {
+			log.Error(err)
+		}
+		body, err = io.ReadAll(reader)
+		if err != nil {
+			log.Error(err)
+		}
+	}
+
 	id := conf.URL + helpers.GenerateURL(6)
 	encodedID := helpers.ShortURL{URL: url.PathEscape(id)}
+
+	log.Info(string(body))
 
 	data.URLMap[encodedID] = helpers.URL{URL: string(body)}
 
