@@ -38,13 +38,13 @@ func Test_createURL(t *testing.T) {
 			name: "positive test #1",
 			want: want{
 				code:        201,
-				contentType: "text/plain",
+				contentType: "text/plain; application/json",
 			},
 			args: args{
 				url:         "/",
 				method:      http.MethodPost,
 				body:        strings.NewReader(`https://yandex.ru`),
-				contentType: "text/plain; charset=utf-8",
+				contentType: "text/plain; charset=utf-8; application/json",
 			},
 		},
 	}
@@ -101,13 +101,13 @@ func Test_getURLByID(t *testing.T) {
 			name: "pos test",
 			want: want{
 				code:        307,
-				contentType: "text/plain",
+				contentType: "text/plain; application/json",
 				location:    data.URLMap[helpers.ShortURL{URL: "testID"}].URL,
 			},
 			args: args{
 				url:         "http://localhost:8080/testID",
 				method:      http.MethodGet,
-				contentType: "text/plain",
+				contentType: "text/plain; application/json",
 			},
 		},
 	}
