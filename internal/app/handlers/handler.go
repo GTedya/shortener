@@ -52,7 +52,7 @@ func (h *handler) CreateURL(w http.ResponseWriter, r *http.Request, conf config.
 
 	data.URLMap[encodedID] = helpers.URL{URL: string(body)}
 
-	w.Header().Add("Content-Type", "text/plain")
+	w.Header().Add("Content-Type", "text/plain; application/json")
 	w.WriteHeader(http.StatusCreated)
 
 	_, err = w.Write([]byte(fmt.Sprintf("http://%s/%s", conf.Address, encodedID.URL)))
