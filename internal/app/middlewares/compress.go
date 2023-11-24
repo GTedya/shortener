@@ -35,8 +35,14 @@ func CompressHandle(next http.Handler) http.Handler {
 		gz, err := gzip.NewWriterLevel(w, gzip.BestSpeed)
 		if err != nil {
 			log.Error(err)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
 		}
-		defer gz.Close()
+		defer func() {
+			if err := gz.Close(); err != nil {
+				log.Error(err)
+			}
+		}()
 
 		w.Header().Set("Content-Encoding", "gzip")
 		next.ServeHTTP(gzipWriter{ResponseWriter: w, Writer: gz}, r)
