@@ -71,7 +71,8 @@ func (h *handler) GetURLByID(w http.ResponseWriter, r *http.Request, data helper
 		return
 	}
 
-	w.Header().Add("Content-Type", "text/plain")
+	w.Header().Add("Content-Type", "text/plain; application/json")
+
 	http.Redirect(w, r, shortenURL.URL, http.StatusTemporaryRedirect)
 }
 
