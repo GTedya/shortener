@@ -1,6 +1,9 @@
 package logger
 
-import "net/http"
+import (
+	"fmt"
+	"net/http"
+)
 
 type (
 	responseData struct {
@@ -17,7 +20,7 @@ type (
 func (r *loggingResponseWriter) Write(b []byte) (int, error) {
 	size, err := r.ResponseWriter.Write(b)
 	r.responseData.size += size
-	return size, err
+	return size, fmt.Errorf("error in loggingResponseWriter method Write: %w", err)
 }
 
 func (r *loggingResponseWriter) WriteHeader(statusCode int) {

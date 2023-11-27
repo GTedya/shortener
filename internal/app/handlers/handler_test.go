@@ -1,16 +1,18 @@
 package handlers
 
 import (
+	"io"
+	"log"
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"testing"
+
 	"github.com/GTedya/shortener/config"
 	"github.com/GTedya/shortener/internal/helpers"
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"io"
-	"net/http"
-	"net/http/httptest"
-	"strings"
-	"testing"
 )
 
 func Test_createURL(t *testing.T) {
@@ -62,7 +64,12 @@ func Test_createURL(t *testing.T) {
 
 			assert.Equal(t, test.want.code, res.StatusCode)
 
-			defer res.Body.Close()
+			defer func(Body io.ReadCloser) {
+				err := Body.Close()
+				if err != nil {
+					log.Fatal(err)
+				}
+			}(res.Body)
 
 			resBody, err := io.ReadAll(res.Body)
 			require.NotEmpty(t, resBody)
@@ -83,7 +90,6 @@ func Test_getURLByID(t *testing.T) {
 	type args struct {
 		url         string
 		method      string
-		body        io.Reader
 		contentType string
 	}
 
@@ -125,14 +131,18 @@ func Test_getURLByID(t *testing.T) {
 			r.ServeHTTP(recorder, req)
 
 			res := recorder.Result()
-			defer res.Body.Close()
+			defer func(Body io.ReadCloser) {
+				err := Body.Close()
+				if err != nil {
+					log.Fatal(err)
+				}
+			}(res.Body)
 			assert.Equal(t, test.want.code, res.StatusCode)
 
 			assert.Equal(t, test.want.contentType, res.Header.Get("Content-Type"))
 			assert.Equal(t, test.want.location, res.Header.Get("location"))
 		})
 	}
-
 }
 
 func TestJsonHandler(t *testing.T) {

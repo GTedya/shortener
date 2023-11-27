@@ -2,10 +2,12 @@ package middlewares
 
 import (
 	"compress/gzip"
-	"github.com/GTedya/shortener/internal/app/logger"
+	"fmt"
 	"io"
 	"net/http"
 	"strings"
+
+	"github.com/GTedya/shortener/internal/app/logger"
 )
 
 type gzipWriter struct {
@@ -14,7 +16,8 @@ type gzipWriter struct {
 }
 
 func (w gzipWriter) Write(b []byte) (int, error) {
-	return w.Writer.Write(b)
+	writer, err := w.Writer.Write(b)
+	return writer, fmt.Errorf("error in gzipWriter method Write: %w", err)
 }
 
 func CompressHandle(next http.Handler) http.Handler {

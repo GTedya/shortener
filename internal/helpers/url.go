@@ -1,8 +1,14 @@
 package helpers
 
 import (
+	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"math/rand"
+	"os"
+
+	"github.com/GTedya/shortener/internal/app/logger"
 )
 
 type URLData struct {
@@ -15,6 +21,33 @@ type URL struct {
 
 type ShortURL struct {
 	URL string `json:"result"`
+}
+
+func CreateURLMap(filepath string) URLData {
+	lastUUID := make([]FileStorage, 0)
+	log := logger.CreateLogger()
+
+	bs, err := os.ReadFile(filepath)
+	if err != nil && !errors.Is(err, io.EOF) {
+		log.Info(err)
+	}
+	if len(bs) > 0 {
+		err = json.Unmarshal(bs, &lastUUID)
+		if err != nil {
+			log.Info(err)
+		}
+	}
+
+	data := URLData{
+		URLMap: make(map[ShortURL]URL),
+	}
+
+	for _, record := range lastUUID {
+		shortURL := ShortURL{URL: record.ShortURL}
+		originalURL := URL{URL: record.OriginalURL}
+		data.URLMap[shortURL] = originalURL
+	}
+	return data
 }
 
 func (u URLData) GetByShortenURL(url string) (URL, error) {

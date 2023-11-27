@@ -5,27 +5,30 @@ import (
 	"compress/gzip"
 	"encoding/json"
 	"fmt"
-	"github.com/GTedya/shortener/config"
-	"github.com/GTedya/shortener/internal/app/logger"
-	"github.com/GTedya/shortener/internal/helpers"
-	"github.com/go-chi/chi/v5"
 	"io"
 	"net/http"
 	"net/url"
 	"strings"
+
+	"github.com/GTedya/shortener/config"
+	"github.com/GTedya/shortener/internal/app/logger"
+	"github.com/GTedya/shortener/internal/helpers"
+	"github.com/go-chi/chi/v5"
 )
 
 type handler struct {
 }
+
+const urlLen = 6
+const contentType = "Content-Type"
 
 func NewHandler() Handler {
 	return &handler{}
 }
 
 func (h *handler) Register(router *chi.Mux, conf config.Config) {
-	data := helpers.URLData{
-		URLMap: make(map[helpers.ShortURL]helpers.URL),
-	}
+	data := helpers.CreateURLMap(conf.FileStoragePath)
+
 	router.Post("/", func(writer http.ResponseWriter, request *http.Request) {
 		h.CreateURL(writer, request, conf, &data)
 	})
@@ -52,32 +55,46 @@ func (h *handler) CreateURL(w http.ResponseWriter, r *http.Request, conf config.
 		return
 	}
 
-	contentType := r.Header.Get("Content-Type")
+	content := r.Header.Get(contentType)
 
-	if strings.Contains(contentType, "application/x-gzip") {
+	if strings.Contains(content, "application/x-gzip") {
 		reader, err := gzip.NewReader(bytes.NewReader(body))
 		if err != nil {
 			log.Error(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
 		}
 		body, err = io.ReadAll(reader)
 		if err != nil {
 			log.Error(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
 		}
 	}
 
-	id := conf.URL + helpers.GenerateURL(6)
+	id := conf.URL + helpers.GenerateURL(urlLen)
 	encodedID := helpers.ShortURL{URL: url.PathEscape(id)}
+	originalURL := helpers.URL{URL: string(body)}
+	data.URLMap[encodedID] = originalURL
 
-	log.Info(string(body))
+	if conf.FileStoragePath != "" {
+		jsonFile := helpers.FileStorage{
+			UUID:        helpers.GenerateUUID(conf.FileStoragePath),
+			ShortURL:    encodedID.URL,
+			OriginalURL: originalURL.URL,
+		}
+		err = helpers.AppendToFile(conf.FileStoragePath, jsonFile)
+		if err != nil {
+			log.Info(err)
+		}
+	}
 
-	data.URLMap[encodedID] = helpers.URL{URL: string(body)}
-
-	w.Header().Add("Content-Type", "text/plain; application/json")
+	w.Header().Add(contentType, "text/plain; application/json")
 	w.WriteHeader(http.StatusCreated)
 
-	_, err = w.Write([]byte(fmt.Sprintf("http://%s/%s", conf.Address, encodedID.URL)))
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
+	if _, err := w.Write([]byte(fmt.Sprintf("http://%s/%s", conf.Address, encodedID.URL))); err != nil {
+		log.Error(err)
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 }
@@ -91,14 +108,14 @@ func (h *handler) GetURLByID(w http.ResponseWriter, r *http.Request, data helper
 		return
 	}
 
-	w.Header().Add("Content-Type", "text/plain; application/json")
+	w.Header().Add(contentType, "text/plain; application/json")
 
 	http.Redirect(w, r, shortenURL.URL, http.StatusTemporaryRedirect)
 }
 
 func (h *handler) URLByJSON(w http.ResponseWriter, r *http.Request, conf config.Config, data *helpers.URLData) {
-	contentType := r.Header.Get("Content-Type")
-	if contentType != "application/json" {
+	content := r.Header.Get(contentType)
+	if content != "application/json" {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -119,11 +136,22 @@ func (h *handler) URLByJSON(w http.ResponseWriter, r *http.Request, conf config.
 	if err != nil {
 		log.Error(err)
 	}
-	id := conf.URL + helpers.GenerateURL(6)
+	id := conf.URL + helpers.GenerateURL(urlLen)
 
 	encodedID := helpers.ShortURL{URL: url.PathEscape(id)}
 	data.URLMap[encodedID] = u
-	w.Header().Set("Content-Type", "application/json")
+	if conf.FileStoragePath != "" {
+		jsonFile := helpers.FileStorage{
+			UUID:        helpers.GenerateUUID(conf.FileStoragePath),
+			ShortURL:    encodedID.URL,
+			OriginalURL: u.URL,
+		}
+		err = helpers.AppendToFile(conf.FileStoragePath, jsonFile)
+		if err != nil {
+			log.Info(err)
+		}
+	}
+	w.Header().Set(contentType, "application/json")
 	w.WriteHeader(http.StatusCreated)
 
 	encodedID = helpers.ShortURL{URL: fmt.Sprintf("http://%s/%s", conf.Address, url.PathEscape(id))}
