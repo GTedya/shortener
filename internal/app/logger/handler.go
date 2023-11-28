@@ -3,8 +3,6 @@ package logger
 import (
 	"net/http"
 	"time"
-
-	"go.uber.org/zap"
 )
 
 type Logger struct {
@@ -27,12 +25,6 @@ func (l *Logger) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	l.handler.ServeHTTP(&lw, r)
 
 	logger := CreateLogger()
-	defer func(logger *zap.SugaredLogger) {
-		err := logger.Sync()
-		if err != nil {
-			logger.Fatal(err)
-		}
-	}(logger)
 
 	logger.Infoln(
 		"uri", r.RequestURI,

@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"io"
-	"log"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -64,12 +63,7 @@ func Test_createURL(t *testing.T) {
 
 			assert.Equal(t, test.want.code, res.StatusCode)
 
-			defer func(Body io.ReadCloser) {
-				err := Body.Close()
-				if err != nil {
-					log.Fatal(err)
-				}
-			}(res.Body)
+			defer res.Body.Close()
 
 			resBody, err := io.ReadAll(res.Body)
 			require.NotEmpty(t, resBody)
@@ -131,12 +125,8 @@ func Test_getURLByID(t *testing.T) {
 			r.ServeHTTP(recorder, req)
 
 			res := recorder.Result()
-			defer func(Body io.ReadCloser) {
-				err := Body.Close()
-				if err != nil {
-					log.Fatal(err)
-				}
-			}(res.Body)
+			defer res.Body.Close()
+
 			assert.Equal(t, test.want.code, res.StatusCode)
 
 			assert.Equal(t, test.want.contentType, res.Header.Get("Content-Type"))
