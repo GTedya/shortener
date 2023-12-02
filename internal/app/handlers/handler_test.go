@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/GTedya/shortener/config"
+	"github.com/GTedya/shortener/internal/app/logger"
 	"github.com/GTedya/shortener/internal/helpers"
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
@@ -55,9 +56,10 @@ func Test_createURL(t *testing.T) {
 			request.Header.Add("Content-Type", test.args.contentType)
 
 			w := httptest.NewRecorder()
+			log := logger.CreateLogger()
 
 			h := &handler{}
-			h.CreateURL(w, request, conf, &data)
+			h.CreateURL(w, request, conf, &data, log)
 
 			res := w.Result()
 
@@ -175,8 +177,9 @@ func TestJsonHandler(t *testing.T) {
 			request.Header.Add("Content-Type", test.contentType)
 
 			w := httptest.NewRecorder()
+			log := logger.CreateLogger()
 
-			h.URLByJSON(w, request, conf, &data)
+			h.URLByJSON(w, request, conf, &data, log)
 			assert.Equal(t, test.expectedStatus, w.Code)
 		})
 	}

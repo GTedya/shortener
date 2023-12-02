@@ -15,12 +15,11 @@ import (
 
 func Start(conf config.Config) {
 	router := chi.NewRouter()
+	router.Use(middlewares.LogHandle, middlewares.GzipCompressHandle, middlewares.GzipDecompressMiddleware)
 
 	handler := handlers.NewHandler()
 	handler.Register(router, conf)
 
-	middleware := logger.CreateLogHandler(router)
-	squeeze := middlewares.CompressHandle(middleware)
 	sugaredLogger := logger.CreateLogger()
 	defer func(sugaredLogger *zap.SugaredLogger) {
 		err := sugaredLogger.Sync()
@@ -29,8 +28,8 @@ func Start(conf config.Config) {
 		}
 	}(sugaredLogger)
 
-	err := http.ListenAndServe(conf.Address, squeeze)
+	err := http.ListenAndServe(conf.Address, router)
 	if err != nil {
-		sugaredLogger.Fatal(err)
+		sugaredLogger.Info(err)
 	}
 }

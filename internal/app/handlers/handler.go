@@ -1,14 +1,12 @@
 package handlers
 
 import (
-	"bytes"
-	"compress/gzip"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
-	"strings"
+
+	"go.uber.org/zap"
 
 	"github.com/GTedya/shortener/config"
 	"github.com/GTedya/shortener/internal/app/logger"
@@ -19,7 +17,6 @@ import (
 type handler struct {
 }
 
-const urlLen = 6
 const contentType = "Content-Type"
 
 func NewHandler() Handler {
@@ -28,9 +25,10 @@ func NewHandler() Handler {
 
 func (h *handler) Register(router *chi.Mux, conf config.Config) {
 	data := helpers.CreateURLMap(conf.FileStoragePath)
+	log := logger.CreateLogger()
 
 	router.Post("/", func(writer http.ResponseWriter, request *http.Request) {
-		h.CreateURL(writer, request, conf, &data)
+		h.CreateURL(writer, request, conf, &data, log)
 	})
 
 	router.Get("/{id}", func(writer http.ResponseWriter, request *http.Request) {
@@ -38,13 +36,13 @@ func (h *handler) Register(router *chi.Mux, conf config.Config) {
 	})
 
 	router.Post("/api/shorten", func(writer http.ResponseWriter, request *http.Request) {
-		h.URLByJSON(writer, request, conf, &data)
+		h.URLByJSON(writer, request, conf, &data, log)
 	})
 }
 
-func (h *handler) CreateURL(w http.ResponseWriter, r *http.Request, conf config.Config, data *helpers.URLData) {
+func (h *handler) CreateURL(w http.ResponseWriter, r *http.Request,
+	conf config.Config, data *helpers.URLData, log *zap.SugaredLogger) {
 	body, err := io.ReadAll(r.Body)
-	log := logger.CreateLogger()
 
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -55,44 +53,18 @@ func (h *handler) CreateURL(w http.ResponseWriter, r *http.Request, conf config.
 		return
 	}
 
-	content := r.Header.Get(contentType)
-
-	if strings.Contains(content, "application/x-gzip") {
-		reader, err := gzip.NewReader(bytes.NewReader(body))
-		if err != nil {
-			log.Error(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		body, err = io.ReadAll(reader)
-		if err != nil {
-			log.Error(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-	}
-
-	id := conf.URL + helpers.GenerateURL(urlLen)
-	encodedID := helpers.ShortURL{URL: url.PathEscape(id)}
-	originalURL := helpers.URL{URL: string(body)}
-	data.URLMap[encodedID] = originalURL
+	var store string
+	var u = helpers.URL{URL: string(body)}
 
 	if conf.FileStoragePath != "" {
-		jsonFile := helpers.FileStorage{
-			UUID:        helpers.GenerateUUID(conf.FileStoragePath),
-			ShortURL:    encodedID.URL,
-			OriginalURL: originalURL.URL,
-		}
-		err = helpers.AppendToFile(conf.FileStoragePath, jsonFile)
-		if err != nil {
-			log.Info(err)
-		}
+		store = helpers.FileStore(data, u, conf.URL, conf.FileStoragePath)
+	} else {
+		store = helpers.MemoryStore(data, u, conf.URL).URL
 	}
-
 	w.Header().Add(contentType, "text/plain; application/json")
 	w.WriteHeader(http.StatusCreated)
 
-	if _, err := w.Write([]byte(fmt.Sprintf("http://%s/%s", conf.Address, encodedID.URL))); err != nil {
+	if _, err := w.Write([]byte(fmt.Sprintf("http://%s/%s", conf.Address, store))); err != nil {
 		log.Error(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -113,7 +85,8 @@ func (h *handler) GetURLByID(w http.ResponseWriter, r *http.Request, data helper
 	http.Redirect(w, r, shortenURL.URL, http.StatusTemporaryRedirect)
 }
 
-func (h *handler) URLByJSON(w http.ResponseWriter, r *http.Request, conf config.Config, data *helpers.URLData) {
+func (h *handler) URLByJSON(w http.ResponseWriter, r *http.Request,
+	conf config.Config, data *helpers.URLData, log *zap.SugaredLogger) {
 	content := r.Header.Get(contentType)
 	if content != "application/json" {
 		w.WriteHeader(http.StatusBadRequest)
@@ -129,37 +102,33 @@ func (h *handler) URLByJSON(w http.ResponseWriter, r *http.Request, conf config.
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	log := logger.CreateLogger()
 
 	var u helpers.URL
 	err = json.Unmarshal(body, &u)
 	if err != nil {
 		log.Error(err)
-	}
-	id := conf.URL + helpers.GenerateURL(urlLen)
-
-	encodedID := helpers.ShortURL{URL: url.PathEscape(id)}
-	data.URLMap[encodedID] = u
-	if conf.FileStoragePath != "" {
-		jsonFile := helpers.FileStorage{
-			UUID:        helpers.GenerateUUID(conf.FileStoragePath),
-			ShortURL:    encodedID.URL,
-			OriginalURL: u.URL,
-		}
-		err = helpers.AppendToFile(conf.FileStoragePath, jsonFile)
-		if err != nil {
-			log.Info(err)
-		}
-	}
-	w.Header().Set(contentType, "application/json")
-	w.WriteHeader(http.StatusCreated)
-
-	encodedID = helpers.ShortURL{URL: fmt.Sprintf("http://%s/%s", conf.Address, url.PathEscape(id))}
-	marshal, err := json.Marshal(encodedID)
-	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
+	var store string
+
+	if conf.FileStoragePath != "" {
+		store = helpers.FileStore(data, u, conf.URL, conf.FileStoragePath)
+	} else {
+		store = helpers.MemoryStore(data, u, conf.URL).URL
+	}
+	w.Header().Add(contentType, "application/json")
+
+	encodedID := helpers.ShortURL{URL: fmt.Sprintf("http://%s/%s", conf.Address, store)}
+	marshal, err := json.Marshal(encodedID)
+	if err != nil {
+		log.Error(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusCreated)
 	_, err = w.Write(marshal)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
