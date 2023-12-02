@@ -14,7 +14,6 @@ import (
 
 func Start(conf config.Config, log *zap.SugaredLogger) error {
 	router := chi.NewRouter()
-	log.Info(conf)
 	middleware := middlewares.Middleware{Log: log}
 	router.Use(middleware.LogHandle, middleware.GzipCompressHandle, middleware.GzipDecompressMiddleware)
 

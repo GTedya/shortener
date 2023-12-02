@@ -53,16 +53,16 @@ func (h *handler) CreateURL(w http.ResponseWriter, r *http.Request,
 		return
 	}
 	id := string(body)
-	shortID := helpers.CreateUniqueID(*data, urlLen, conf.URL)
+
+	shortID := helpers.CreateUniqueID(*data, urlLen)
 
 	store := helpers.NewStore(conf, h.Log)
 	store.Store(id, shortID, data)
-	h.Log.Infow("short id", shortID)
 
 	w.Header().Add(contentType, "text/plain; application/json")
 	w.WriteHeader(http.StatusCreated)
 
-	if _, err := w.Write([]byte(fmt.Sprintf("http://%s/%s", conf.Address, shortID))); err != nil {
+	if _, err := w.Write([]byte(fmt.Sprintf("%s/%s", conf.URL, shortID))); err != nil {
 		h.Log.Errorw("data writing error", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -111,7 +111,7 @@ func (h *handler) URLByJSON(w http.ResponseWriter, r *http.Request,
 	}
 
 	id := u.URL
-	shortID := helpers.CreateUniqueID(*data, urlLen, conf.URL)
+	shortID := helpers.CreateUniqueID(*data, urlLen)
 
 	store := helpers.NewStore(conf, h.Log)
 	store.Store(id, shortID, data)

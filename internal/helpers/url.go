@@ -57,13 +57,13 @@ func (u URLData) GetByShortenURL(url string) (URL, error) {
 	return link, nil
 }
 
-func CreateUniqueID(data URLData, urlLen int, basicURL string) string {
-	id := basicURL + GenerateURL(urlLen)
+func CreateUniqueID(data URLData, urlLen int) string {
+	id := GenerateURL(urlLen)
 	uniqueID := false
 	for !uniqueID {
 		_, ok := data.URLMap[ShortURL{URL: id}]
 		if ok {
-			id = basicURL + GenerateURL(urlLen)
+			id = GenerateURL(urlLen)
 			continue
 		}
 		uniqueID = true
