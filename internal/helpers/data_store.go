@@ -2,7 +2,6 @@ package helpers
 
 import (
 	"encoding/json"
-	"fmt"
 	"os"
 
 	"github.com/GTedya/shortener/config"
@@ -32,7 +31,6 @@ func NewStore(conf config.Config, log *zap.SugaredLogger) Store {
 }
 
 func (m memoryStore) Store(id, shortID string, data *URLData) {
-	fmt.Println("В памяти")
 	data.URLMap[ShortURL{shortID}] = URL{id}
 }
 
