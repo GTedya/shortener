@@ -8,7 +8,7 @@ import (
 	"math/rand"
 	"os"
 
-	"github.com/GTedya/shortener/internal/app/logger"
+	"go.uber.org/zap"
 )
 
 type URLData struct {
@@ -23,18 +23,17 @@ type ShortURL struct {
 	URL string `json:"result"`
 }
 
-func CreateURLMap(filepath string) URLData {
+func CreateURLMap(filepath string, log *zap.SugaredLogger) URLData {
 	lastUUID := make([]FileStorage, 0)
-	log := logger.CreateLogger()
 
 	bs, err := os.ReadFile(filepath)
 	if err != nil && !errors.Is(err, io.EOF) {
-		log.Info(err)
+		log.Infow("file reading error", err)
 	}
 	if len(bs) > 0 {
 		err = json.Unmarshal(bs, &lastUUID)
 		if err != nil {
-			log.Info(err)
+			log.Errorw("json unmarshalling error", err)
 		}
 	}
 
@@ -56,6 +55,20 @@ func (u URLData) GetByShortenURL(url string) (URL, error) {
 		return URL{}, fmt.Errorf("неверный адресс URL")
 	}
 	return link, nil
+}
+
+func CreateUniqueID(data URLData, urlLen int, basicURL string) string {
+	id := basicURL + GenerateURL(urlLen)
+	uniqueID := false
+	for !uniqueID {
+		_, ok := data.URLMap[ShortURL{URL: id}]
+		if ok {
+			id = basicURL + GenerateURL(urlLen)
+			continue
+		}
+		uniqueID = true
+	}
+	return id
 }
 
 func GenerateURL(n int) string {

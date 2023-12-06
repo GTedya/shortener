@@ -6,8 +6,6 @@ import (
 	"io"
 	"net/http"
 	"strings"
-
-	"github.com/GTedya/shortener/internal/app/logger"
 )
 
 type gzipWriter struct {
@@ -23,7 +21,7 @@ func (w gzipWriter) Write(b []byte) (int, error) {
 	return writer, nil
 }
 
-func GzipCompressHandle(next http.Handler) http.Handler {
+func (m Middleware) GzipCompressHandle(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
 			next.ServeHTTP(w, r)
@@ -36,17 +34,16 @@ func GzipCompressHandle(next http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 			return
 		}
-		log := logger.CreateLogger()
 
 		gz, err := gzip.NewWriterLevel(w, gzip.BestSpeed)
 		if err != nil {
-			log.Error(err)
+			m.Log.Errorw("gzip writer error", err)
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 			return
 		}
 		defer func() {
 			if err := gz.Close(); err != nil {
-				log.Error(err)
+				m.Log.Errorw("gzip close error", err)
 			}
 		}()
 

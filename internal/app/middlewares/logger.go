@@ -5,10 +5,13 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/GTedya/shortener/internal/app/logger"
+	"go.uber.org/zap"
 )
 
 type (
+	Middleware struct {
+		Log *zap.SugaredLogger
+	}
 	loggerWriter struct {
 		http.ResponseWriter
 	}
@@ -36,11 +39,9 @@ func (r *loggingResponseWriter) WriteHeader(statusCode int) {
 	r.responseData.status = statusCode
 }
 
-func LogHandle(next http.Handler) http.Handler {
+func (m Middleware) LogHandle(next http.Handler) http.Handler {
+	start := time.Now()
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		start := time.Now()
-		log := logger.CreateLogger()
-
 		resData := &responseData{
 			status: 0,
 			size:   0,
@@ -52,7 +53,7 @@ func LogHandle(next http.Handler) http.Handler {
 		}
 		next.ServeHTTP(loggerWriter{ResponseWriter: &lw}, r)
 
-		log.Infoln(
+		m.Log.Infoln(
 			"uri", r.RequestURI,
 			"method", r.Method,
 			"status", resData.status,

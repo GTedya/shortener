@@ -9,26 +9,26 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/GTedya/shortener/config"
-	"github.com/GTedya/shortener/internal/app/logger"
 	"github.com/GTedya/shortener/internal/helpers"
 	"github.com/go-chi/chi/v5"
 )
 
 type handler struct {
+	Log *zap.SugaredLogger
 }
 
+const urlLen = 6
 const contentType = "Content-Type"
 
-func NewHandler() Handler {
-	return &handler{}
+func NewHandler(logger *zap.SugaredLogger) Handler {
+	return &handler{Log: logger}
 }
 
 func (h *handler) Register(router *chi.Mux, conf config.Config) {
-	data := helpers.CreateURLMap(conf.FileStoragePath)
-	log := logger.CreateLogger()
+	data := helpers.CreateURLMap(conf.FileStoragePath, h.Log)
 
 	router.Post("/", func(writer http.ResponseWriter, request *http.Request) {
-		h.CreateURL(writer, request, conf, &data, log)
+		h.CreateURL(writer, request, conf, &data)
 	})
 
 	router.Get("/{id}", func(writer http.ResponseWriter, request *http.Request) {
@@ -36,12 +36,12 @@ func (h *handler) Register(router *chi.Mux, conf config.Config) {
 	})
 
 	router.Post("/api/shorten", func(writer http.ResponseWriter, request *http.Request) {
-		h.URLByJSON(writer, request, conf, &data, log)
+		h.URLByJSON(writer, request, conf, &data)
 	})
 }
 
 func (h *handler) CreateURL(w http.ResponseWriter, r *http.Request,
-	conf config.Config, data *helpers.URLData, log *zap.SugaredLogger) {
+	conf config.Config, data *helpers.URLData) {
 	body, err := io.ReadAll(r.Body)
 
 	if err != nil {
@@ -52,20 +52,17 @@ func (h *handler) CreateURL(w http.ResponseWriter, r *http.Request,
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
+	id := string(body)
+	shortID := helpers.CreateUniqueID(*data, urlLen, conf.URL)
 
-	var store string
-	var u = helpers.URL{URL: string(body)}
+	store := helpers.NewStore(conf, h.Log)
+	store.Store(id, shortID, data)
 
-	if conf.FileStoragePath != "" {
-		store = helpers.FileStore(data, u, conf.URL, conf.FileStoragePath)
-	} else {
-		store = helpers.MemoryStore(data, u, conf.URL).URL
-	}
 	w.Header().Add(contentType, "text/plain; application/json")
 	w.WriteHeader(http.StatusCreated)
 
-	if _, err := w.Write([]byte(fmt.Sprintf("http://%s/%s", conf.Address, store))); err != nil {
-		log.Error(err)
+	if _, err := w.Write([]byte(fmt.Sprintf("http://%s/%s", conf.Address, shortID))); err != nil {
+		h.Log.Errorw("data writing error", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -76,6 +73,7 @@ func (h *handler) GetURLByID(w http.ResponseWriter, r *http.Request, data helper
 
 	shortenURL, err := data.GetByShortenURL(id)
 	if err != nil {
+		h.Log.Errorw("ID not found", err)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -86,7 +84,7 @@ func (h *handler) GetURLByID(w http.ResponseWriter, r *http.Request, data helper
 }
 
 func (h *handler) URLByJSON(w http.ResponseWriter, r *http.Request,
-	conf config.Config, data *helpers.URLData, log *zap.SugaredLogger) {
+	conf config.Config, data *helpers.URLData) {
 	content := r.Header.Get(contentType)
 	if content != "application/json" {
 		w.WriteHeader(http.StatusBadRequest)
@@ -106,24 +104,23 @@ func (h *handler) URLByJSON(w http.ResponseWriter, r *http.Request,
 	var u helpers.URL
 	err = json.Unmarshal(body, &u)
 	if err != nil {
-		log.Error(err)
+		h.Log.Errorw("Json unmarshalling error", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	var store string
+	id := u.URL
+	shortID := helpers.CreateUniqueID(*data, urlLen, conf.URL)
 
-	if conf.FileStoragePath != "" {
-		store = helpers.FileStore(data, u, conf.URL, conf.FileStoragePath)
-	} else {
-		store = helpers.MemoryStore(data, u, conf.URL).URL
-	}
+	store := helpers.NewStore(conf, h.Log)
+	store.Store(id, shortID, data)
+
 	w.Header().Add(contentType, "application/json")
 
-	encodedID := helpers.ShortURL{URL: fmt.Sprintf("http://%s/%s", conf.Address, store)}
+	encodedID := helpers.ShortURL{URL: fmt.Sprintf("http://%s/%s", conf.Address, shortID)}
 	marshal, err := json.Marshal(encodedID)
 	if err != nil {
-		log.Error(err)
+		h.Log.Errorw("Json marshalling error", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -131,6 +128,7 @@ func (h *handler) URLByJSON(w http.ResponseWriter, r *http.Request,
 	w.WriteHeader(http.StatusCreated)
 	_, err = w.Write(marshal)
 	if err != nil {
+		h.Log.Errorw("data writing error:", err)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}

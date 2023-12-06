@@ -2,54 +2,60 @@ package helpers
 
 import (
 	"encoding/json"
-	"net/url"
+	"fmt"
 	"os"
 
-	"github.com/GTedya/shortener/internal/app/logger"
+	"github.com/GTedya/shortener/config"
+	"go.uber.org/zap"
 )
 
-const urlLen = 6
 const writingPermission = 0600
 
-func MemoryStore(data *URLData, body URL, basicURL string) ShortURL {
-	id := basicURL + GenerateURL(urlLen)
-	uniqueID := false
-	for !uniqueID {
-		_, ok := data.URLMap[ShortURL{URL: id}]
-		if ok {
-			id = basicURL + GenerateURL(urlLen)
-			continue
-		}
-		uniqueID = true
-	}
-	encodedID := ShortURL{URL: url.PathEscape(id)}
-	originalURL := body
-
-	data.URLMap[encodedID] = originalURL
-	return encodedID
+type memoryStore struct {
+	conf config.Config
+}
+type fileStore struct {
+	conf config.Config
+	log  *zap.SugaredLogger
+	memoryStore
 }
 
-func FileStore(data *URLData, body URL, basicURL string, filePath string) string {
-	short := MemoryStore(data, body, basicURL)
+type Store interface {
+	Store(id, shortID string, data *URLData)
+}
+
+func NewStore(conf config.Config, log *zap.SugaredLogger) Store {
+	if len(conf.FileStoragePath) == 0 {
+		return memoryStore{conf: conf}
+	}
+	return fileStore{conf: conf, log: log}
+}
+
+func (m memoryStore) Store(id, shortID string, data *URLData) {
+	fmt.Println("В памяти")
+	data.URLMap[ShortURL{shortID}] = URL{id}
+}
+
+func (f fileStore) Store(id, shortID string, data *URLData) {
+	f.memoryStore.Store(id, shortID, data)
+	filePath := f.conf.FileStoragePath
 	jsonFile := FileStorage{
 		UUID:        GenerateUUID(filePath),
-		ShortURL:    short.URL,
-		OriginalURL: data.URLMap[short].URL,
+		ShortURL:    shortID,
+		OriginalURL: id,
 	}
 
-	log := logger.CreateLogger()
 	content, err := os.ReadFile(filePath)
 
 	if err != nil && !os.IsNotExist(err) {
-		log.Error(err)
-		return ""
+		f.log.Info(err)
 	}
 
 	var storage []FileStorage
 	if len(content) > 0 {
 		if err := json.Unmarshal(content, &storage); err != nil {
-			log.Error(err)
-			return ""
+			f.log.Errorw("json unmarshal error", err)
+			return
 		}
 	}
 
@@ -57,14 +63,13 @@ func FileStore(data *URLData, body URL, basicURL string, filePath string) string
 
 	encoded, err := json.MarshalIndent(storage, "", "  ")
 	if err != nil {
-		log.Error(err)
-		return ""
+		f.log.Errorw("json marshal error", err)
+		return
 	}
 
 	err = os.WriteFile(filePath, encoded, writingPermission)
 	if err != nil {
-		log.Error(err)
-		return ""
+		f.log.Errorw("file writing error", err)
+		return
 	}
-	return short.URL
 }

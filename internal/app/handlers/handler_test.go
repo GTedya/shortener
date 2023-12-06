@@ -58,8 +58,8 @@ func Test_createURL(t *testing.T) {
 			w := httptest.NewRecorder()
 			log := logger.CreateLogger()
 
-			h := &handler{}
-			h.CreateURL(w, request, conf, &data, log)
+			h := &handler{Log: log}
+			h.CreateURL(w, request, conf, &data)
 
 			res := w.Result()
 
@@ -142,7 +142,8 @@ func TestJsonHandler(t *testing.T) {
 	data := helpers.URLData{
 		URLMap: make(map[helpers.ShortURL]helpers.URL),
 	}
-	h := &handler{}
+	log := logger.CreateLogger()
+	h := &handler{Log: log}
 
 	// Test cases
 	tests := []struct {
@@ -177,9 +178,8 @@ func TestJsonHandler(t *testing.T) {
 			request.Header.Add("Content-Type", test.contentType)
 
 			w := httptest.NewRecorder()
-			log := logger.CreateLogger()
 
-			h.URLByJSON(w, request, conf, &data, log)
+			h.URLByJSON(w, request, conf, &data)
 			assert.Equal(t, test.expectedStatus, w.Code)
 		})
 	}
