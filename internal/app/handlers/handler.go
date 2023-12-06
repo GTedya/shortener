@@ -57,6 +57,7 @@ func (h *handler) CreateURL(w http.ResponseWriter, r *http.Request,
 
 	store := helpers.NewStore(conf, h.Log)
 	store.Store(id, shortID, data)
+	h.Log.Infow("short id", shortID)
 
 	w.Header().Add(contentType, "text/plain; application/json")
 	w.WriteHeader(http.StatusCreated)
