@@ -22,7 +22,6 @@ func Start(conf config.Config, log *zap.SugaredLogger) error {
 
 	err := http.ListenAndServe(conf.Address, router)
 	if err != nil {
-		log.Errorw("server serving error", err)
 		return fmt.Errorf("server serving error: %w", err)
 	}
 	return nil

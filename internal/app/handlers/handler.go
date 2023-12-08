@@ -56,8 +56,8 @@ func (h *handler) CreateURL(w http.ResponseWriter, r *http.Request,
 
 	shortID := helpers.CreateUniqueID(*data, urlLen)
 
-	store := helpers.NewStore(conf, h.Log)
-	store.Store(id, shortID, data)
+	store := helpers.NewStore(conf, h.Log, data)
+	store.Store(id, shortID)
 
 	w.Header().Add(contentType, "text/plain; application/json")
 	w.WriteHeader(http.StatusCreated)
@@ -113,8 +113,8 @@ func (h *handler) URLByJSON(w http.ResponseWriter, r *http.Request,
 	id := u.URL
 	shortID := helpers.CreateUniqueID(*data, urlLen)
 
-	store := helpers.NewStore(conf, h.Log)
-	store.Store(id, shortID, data)
+	store := helpers.NewStore(conf, h.Log, data)
+	store.Store(id, shortID)
 
 	w.Header().Add(contentType, "application/json")
 
