@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -24,9 +25,8 @@ func NewHandler(logger *zap.SugaredLogger) Handler {
 	return &handler{Log: logger}
 }
 
-func (h *handler) Register(router *chi.Mux, conf config.Config) {
+func (h *handler) Register(router *chi.Mux, conf config.Config, db *sql.DB) {
 	data := helpers.CreateURLMap(conf.FileStoragePath, h.Log)
-
 	router.Post("/", func(writer http.ResponseWriter, request *http.Request) {
 		h.CreateURL(writer, request, conf, &data)
 	})
@@ -37,6 +37,10 @@ func (h *handler) Register(router *chi.Mux, conf config.Config) {
 
 	router.Post("/api/shorten", func(writer http.ResponseWriter, request *http.Request) {
 		h.URLByJSON(writer, request, conf, &data)
+	})
+
+	router.Get("/ping", func(writer http.ResponseWriter, request *http.Request) {
+		h.GetPing(writer, request, db)
 	})
 }
 
@@ -133,4 +137,13 @@ func (h *handler) URLByJSON(w http.ResponseWriter, r *http.Request,
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
+}
+
+func (h *handler) GetPing(w http.ResponseWriter, r *http.Request, db *sql.DB) {
+	err := db.Ping()
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
 }
