@@ -17,10 +17,14 @@ func Start(conf config.Config, log *zap.SugaredLogger) error {
 	middleware := middlewares.Middleware{Log: log}
 	router.Use(middleware.LogHandle, middleware.GzipCompressHandle, middleware.GzipDecompressMiddleware)
 
-	handler := handlers.NewHandler(log)
-	handler.Register(router, conf)
+	handler, err := handlers.NewHandler(log, conf)
+	if err != nil {
+		return fmt.Errorf("handler creation error: %w", err)
+	}
 
-	err := http.ListenAndServe(conf.Address, router)
+	handler.Register(router)
+
+	err = http.ListenAndServe(conf.Address, router)
 	if err != nil {
 		return fmt.Errorf("server serving error: %w", err)
 	}

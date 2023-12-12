@@ -7,8 +7,6 @@ import (
 	"io"
 	"math/rand"
 	"os"
-
-	"go.uber.org/zap"
 )
 
 type URLData struct {
@@ -23,30 +21,34 @@ type ShortURL struct {
 	URL string `json:"result"`
 }
 
-func CreateURLMap(filepath string, log *zap.SugaredLogger) URLData {
+func CreateURLData(filepath string) (map[string]string, error) {
 	lastUUID := make([]FileStorage, 0)
 
 	bs, err := os.ReadFile(filepath)
+	if os.IsNotExist(err) {
+		_, er := os.Create(filepath)
+		if er != nil {
+			return nil, fmt.Errorf("file creation error: %w", er)
+		}
+	}
 	if err != nil && !errors.Is(err, io.EOF) {
-		log.Infow("file reading error", err)
+		return nil, fmt.Errorf("file reading error: %w", err)
 	}
 	if len(bs) > 0 {
 		err = json.Unmarshal(bs, &lastUUID)
 		if err != nil {
-			log.Errorw("json unmarshalling error", err)
+			return nil, fmt.Errorf("json unmarshalling error: %w", err)
 		}
 	}
 
-	data := URLData{
-		URLMap: make(map[ShortURL]URL),
-	}
+	data := make(map[string]string)
 
 	for _, record := range lastUUID {
-		shortURL := ShortURL{URL: record.ShortURL}
-		originalURL := URL{URL: record.OriginalURL}
-		data.URLMap[shortURL] = originalURL
+		shortURL := record.ShortURL
+		originalURL := record.OriginalURL
+		data[shortURL] = originalURL
 	}
-	return data
+	return data, nil
 }
 
 func (u URLData) GetByShortenURL(url string) (URL, error) {
@@ -57,16 +59,15 @@ func (u URLData) GetByShortenURL(url string) (URL, error) {
 	return link, nil
 }
 
-func CreateUniqueID(data URLData, urlLen int) string {
+func CreateUniqueID(check func(shortID string) (string, error), urlLen int) string {
 	id := GenerateURL(urlLen)
 	uniqueID := false
 	for !uniqueID {
-		_, ok := data.URLMap[ShortURL{URL: id}]
-		if ok {
+		_, err := check(id)
+		if err != nil {
 			id = GenerateURL(urlLen)
-			continue
+			uniqueID = true
 		}
-		uniqueID = true
 	}
 	return id
 }

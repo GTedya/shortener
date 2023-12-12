@@ -2,44 +2,63 @@ package helpers
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 
 	"github.com/GTedya/shortener/config"
-	"go.uber.org/zap"
 )
 
 const writingPermission = 0600
 
 type memoryStore struct {
-	data *URLData
+	data map[string]string
 	conf config.Config
 }
 type fileStore struct {
-	data *URLData
-	conf config.Config
-	log  *zap.SugaredLogger
 	memoryStore
 }
 
 type Store interface {
-	Store(id, shortID string)
+	GetURL(shortID string) (string, error)
+	SaveURL(id, shortID string) error
 }
 
-func NewStore(conf config.Config, log *zap.SugaredLogger, data *URLData) Store {
-	if len(conf.FileStoragePath) == 0 {
-		return memoryStore{conf: conf, data: data}
+func NewStore(conf config.Config, data map[string]string) Store {
+	var store Store
+	store = memoryStore{conf: conf, data: data}
+	if len(conf.FileStoragePath) != 0 {
+		store = fileStore{memoryStore: memoryStore{conf: conf, data: data}}
 	}
-	return fileStore{conf: conf, log: log, data: data}
+	return store
 }
 
-func (m memoryStore) Store(id, shortID string) {
-	m.data.URLMap[ShortURL{shortID}] = URL{id}
+func (ms memoryStore) GetURL(shortID string) (string, error) {
+	url, ok := ms.data[shortID]
+	if !ok {
+		return "", fmt.Errorf("URL not found in data list")
+	}
+	return url, nil
 }
 
-func (f fileStore) Store(id, shortID string) {
-	f.memoryStore.data = f.data
-	f.memoryStore.Store(id, shortID)
-	filePath := f.conf.FileStoragePath
+func (fs fileStore) GetURL(shortID string) (string, error) {
+	url, err := fs.memoryStore.GetURL(shortID)
+	if err != nil {
+		return "", err
+	}
+	return url, nil
+}
+
+func (ms memoryStore) SaveURL(id, shortID string) error {
+	ms.data[shortID] = id
+	return nil
+}
+
+func (fs fileStore) SaveURL(id, shortID string) error {
+	err := fs.memoryStore.SaveURL(id, shortID)
+	if err != nil {
+		return err
+	}
+	filePath := fs.conf.FileStoragePath
 	jsonFile := FileStorage{
 		UUID:        GenerateUUID(filePath),
 		ShortURL:    shortID,
@@ -49,14 +68,13 @@ func (f fileStore) Store(id, shortID string) {
 	content, err := os.ReadFile(filePath)
 
 	if err != nil && !os.IsNotExist(err) {
-		f.log.Info(err)
+		return fmt.Errorf("file reading error: %w", err)
 	}
 
 	var storage []FileStorage
 	if len(content) > 0 {
-		if err := json.Unmarshal(content, &storage); err != nil {
-			f.log.Errorw("json unmarshal error", err)
-			return
+		if err = json.Unmarshal(content, &storage); err != nil {
+			return fmt.Errorf("json unmarshal error: %w", err)
 		}
 	}
 
@@ -64,13 +82,12 @@ func (f fileStore) Store(id, shortID string) {
 
 	encoded, err := json.MarshalIndent(storage, "", "  ")
 	if err != nil {
-		f.log.Errorw("json marshal error", err)
-		return
+		return fmt.Errorf("json marshal error: %w", err)
 	}
 
 	err = os.WriteFile(filePath, encoded, writingPermission)
 	if err != nil {
-		f.log.Errorw("file writing error", err)
-		return
+		return fmt.Errorf("file writing error: %w", err)
 	}
+	return nil
 }
