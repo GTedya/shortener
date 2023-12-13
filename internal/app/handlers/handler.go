@@ -32,7 +32,7 @@ func NewHandler(logger *zap.SugaredLogger, conf config.Config) (Handler, error) 
 	if err != nil {
 		return nil, fmt.Errorf("data creation error: %w", err)
 	}
-	return &handler{log: logger, store: helpers.NewStore(conf, data)}, nil
+	return &handler{log: logger, conf: conf, store: helpers.NewStore(conf, data)}, nil
 }
 
 func (h *handler) Register(router *chi.Mux) {
