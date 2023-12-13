@@ -23,12 +23,12 @@ type ShortURL struct {
 
 func CreateURLData(filepath string) (map[string]string, error) {
 	lastUUID := make([]FileStorage, 0)
-
+	data := make(map[string]string)
 	bs, err := os.ReadFile(filepath)
 	if os.IsNotExist(err) {
-		_, er := os.Create(filepath)
-		if er != nil {
-			return nil, fmt.Errorf("file creation error: %w", er)
+		_, err = os.Create(filepath)
+		if err != nil {
+			return data, nil
 		}
 	}
 	if err != nil && !errors.Is(err, io.EOF) {
@@ -41,22 +41,12 @@ func CreateURLData(filepath string) (map[string]string, error) {
 		}
 	}
 
-	data := make(map[string]string)
-
 	for _, record := range lastUUID {
 		shortURL := record.ShortURL
 		originalURL := record.OriginalURL
 		data[shortURL] = originalURL
 	}
 	return data, nil
-}
-
-func (u URLData) GetByShortenURL(url string) (URL, error) {
-	link, ok := u.URLMap[ShortURL{url}]
-	if !ok {
-		return URL{}, fmt.Errorf("неверный адресс URL")
-	}
-	return link, nil
 }
 
 func CreateUniqueID(check func(shortID string) (string, error), urlLen int) string {
