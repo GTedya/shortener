@@ -25,13 +25,7 @@ func CreateURLData(filepath string) (map[string]string, error) {
 	lastUUID := make([]FileStorage, 0)
 	data := make(map[string]string)
 	bs, err := os.ReadFile(filepath)
-	if os.IsNotExist(err) {
-		_, err = os.Create(filepath)
-		if err != nil {
-			return data, nil
-		}
-	}
-	if err != nil && !errors.Is(err, io.EOF) {
+	if err != nil && !errors.Is(err, io.EOF) && !errors.Is(err, os.ErrNotExist) {
 		return nil, fmt.Errorf("file reading error: %w", err)
 	}
 	if len(bs) > 0 {
