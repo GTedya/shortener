@@ -8,9 +8,11 @@ import (
 	"strings"
 	"testing"
 
+	"go.uber.org/zap"
+
 	"github.com/GTedya/shortener/config"
+	"github.com/GTedya/shortener/internal/app/datastore"
 	"github.com/GTedya/shortener/internal/app/logger"
-	"github.com/GTedya/shortener/internal/helpers"
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -18,7 +20,6 @@ import (
 
 func Test_createURL(t *testing.T) {
 	conf := config.Config{Address: "localhost:8080", URL: "short"}
-	data := make(map[string]string)
 
 	type args struct {
 		url         string
@@ -57,8 +58,12 @@ func Test_createURL(t *testing.T) {
 
 			w := httptest.NewRecorder()
 			log := logger.CreateLogger()
+			store, err := datastore.NewStore(conf)
+			if err != nil {
+				t.Log(err)
+			}
 
-			h := &handler{log: log, conf: conf, store: helpers.NewStore(conf, data)}
+			h := &handler{log: log, conf: conf, store: store}
 			h.CreateURL(w, request)
 
 			res := w.Result()
@@ -120,8 +125,18 @@ func Test_getURLByID(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			r := chi.NewRouter()
 			conf := config.Config{Address: "localhost:8080", URL: "short"}
+			log := &zap.SugaredLogger{}
+			store, err := datastore.NewStore(conf)
+			if err != nil {
+				t.Log(err)
+			}
 
-			h := &handler{store: helpers.NewStore(conf, data)}
+			h := handler{log: log, conf: conf, store: store}
+			err = h.store.SaveURL("http://localhost:8080/testID", "testID")
+			if err != nil {
+				t.Log(err)
+			}
+
 			r.Get("/{id:[a-zA-Z0-9]+}", func(writer http.ResponseWriter, request *http.Request) {
 				h.GetURLByID(writer, request)
 			})
@@ -149,9 +164,13 @@ func Test_getURLByID(t *testing.T) {
 
 func TestJsonHandler(t *testing.T) {
 	conf := config.Config{Address: "localhost:8080", URL: "short"}
-	data := make(map[string]string)
 	log := logger.CreateLogger()
-	h := &handler{log: log, conf: conf, store: helpers.NewStore(conf, data)}
+	store, err := datastore.NewStore(conf)
+	if err != nil {
+		t.Log(err)
+	}
+
+	h := &handler{log: log, conf: conf, store: store}
 
 	// Test cases
 	tests := []struct {

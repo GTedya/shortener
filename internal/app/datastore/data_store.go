@@ -1,4 +1,4 @@
-package helpers
+package datastore
 
 import (
 	"encoding/json"
@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/GTedya/shortener/config"
+	"github.com/GTedya/shortener/internal/helpers"
 )
 
 const writingPermission = 0600
@@ -23,13 +24,19 @@ type Store interface {
 	SaveURL(id, shortID string) error
 }
 
-func NewStore(conf config.Config, data map[string]string) Store {
+func NewStore(conf config.Config) (Store, error) {
 	var store Store
+	data := make(map[string]string)
+
 	store = memoryStore{conf: conf, data: data}
 	if len(conf.FileStoragePath) != 0 {
+		err := helpers.FileData(data, conf.FileStoragePath)
+		if err != nil {
+			return nil, fmt.Errorf("unable to get file data: %w", err)
+		}
 		store = fileStore{memoryStore: memoryStore{conf: conf, data: data}}
 	}
-	return store
+	return store, nil
 }
 
 func (ms memoryStore) GetURL(shortID string) (string, error) {
@@ -59,8 +66,8 @@ func (fs fileStore) SaveURL(id, shortID string) error {
 		return err
 	}
 	filePath := fs.conf.FileStoragePath
-	jsonFile := FileStorage{
-		UUID:        GenerateUUID(filePath),
+	jsonFile := helpers.FileStorage{
+		UUID:        helpers.GenerateUUID(filePath),
 		ShortURL:    shortID,
 		OriginalURL: id,
 	}
@@ -71,7 +78,7 @@ func (fs fileStore) SaveURL(id, shortID string) error {
 		return fmt.Errorf("file reading error: %w", err)
 	}
 
-	var storage []FileStorage
+	var storage []helpers.FileStorage
 	if len(content) > 0 {
 		if err = json.Unmarshal(content, &storage); err != nil {
 			return fmt.Errorf("json unmarshal error: %w", err)

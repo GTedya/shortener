@@ -9,13 +9,14 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/GTedya/shortener/config"
+	"github.com/GTedya/shortener/internal/app/datastore"
 	"github.com/GTedya/shortener/internal/helpers"
 	"github.com/go-chi/chi/v5"
 )
 
 type handler struct {
 	log   *zap.SugaredLogger
-	store helpers.Store
+	store Store
 	conf  config.Config
 }
 
@@ -28,11 +29,11 @@ type Store interface {
 }
 
 func NewHandler(logger *zap.SugaredLogger, conf config.Config) (Handler, error) {
-	data, err := helpers.CreateURLData(conf.FileStoragePath)
+	store, err := datastore.NewStore(conf)
 	if err != nil {
-		return nil, fmt.Errorf("data creation error: %w", err)
+		return nil, fmt.Errorf("store creation error: %w", err)
 	}
-	return &handler{log: logger, conf: conf, store: helpers.NewStore(conf, data)}, nil
+	return &handler{log: logger, conf: conf, store: store}, nil
 }
 
 func (h *handler) Register(router *chi.Mux) {
@@ -62,7 +63,7 @@ func (h *handler) CreateURL(w http.ResponseWriter, r *http.Request) {
 	}
 	id := string(body)
 
-	shortID := helpers.CreateUniqueID(h.store.GetURL, urlLen)
+	shortID := createUniqueID(h.store.GetURL, urlLen)
 
 	err = h.store.SaveURL(id, shortID)
 	if err != nil {
@@ -122,7 +123,7 @@ func (h *handler) URLByJSON(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := u.URL
-	shortID := helpers.CreateUniqueID(h.store.GetURL, urlLen)
+	shortID := createUniqueID(h.store.GetURL, urlLen)
 
 	err = h.store.SaveURL(id, shortID)
 	if err != nil {
@@ -148,4 +149,17 @@ func (h *handler) URLByJSON(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
+}
+
+func createUniqueID(check func(shortID string) (string, error), urlLen int) string {
+	id := helpers.GenerateURL(urlLen)
+	uniqueID := false
+	for !uniqueID {
+		_, err := check(id)
+		if err != nil {
+			id = helpers.GenerateURL(urlLen)
+			uniqueID = true
+		}
+	}
+	return id
 }
