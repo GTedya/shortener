@@ -10,7 +10,6 @@ import (
 
 	"github.com/GTedya/shortener/config"
 	"github.com/GTedya/shortener/internal/app/datastore"
-	"github.com/GTedya/shortener/internal/helpers"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -114,7 +113,7 @@ func (h *handler) URLByJSON(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var u helpers.URL
+	var u URL
 	err = json.Unmarshal(body, &u)
 	if err != nil {
 		h.log.Errorw("Json unmarshalling error", err)
@@ -134,7 +133,7 @@ func (h *handler) URLByJSON(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Add(contentType, "application/json")
 
-	encodedID := helpers.ShortURL{URL: fmt.Sprintf("http://%s/%s", h.conf.Address, shortID)}
+	encodedID := ShortURL{URL: fmt.Sprintf("http://%s/%s", h.conf.Address, shortID)}
 	marshal, err := json.Marshal(encodedID)
 	if err != nil {
 		h.log.Errorw("Json marshalling error", err)
@@ -149,17 +148,4 @@ func (h *handler) URLByJSON(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-}
-
-func createUniqueID(check func(shortID string) (string, error), urlLen int) string {
-	id := helpers.GenerateURL(urlLen)
-	uniqueID := false
-	for !uniqueID {
-		_, err := check(id)
-		if err != nil {
-			id = helpers.GenerateURL(urlLen)
-			uniqueID = true
-		}
-	}
-	return id
 }
