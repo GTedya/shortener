@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -15,6 +16,7 @@ import (
 
 type handler struct {
 	log   *zap.SugaredLogger
+	db    *sql.DB
 	store Store
 	conf  config.Config
 }
@@ -27,26 +29,22 @@ type Store interface {
 	SaveURL(id, shortID string) error
 }
 
-func NewHandler(logger *zap.SugaredLogger, conf config.Config) (Handler, error) {
+func NewHandler(logger *zap.SugaredLogger, conf config.Config, db *sql.DB) (Handler, error) {
 	store, err := datastore.NewStore(conf)
 	if err != nil {
 		return nil, fmt.Errorf("store creation error: %w", err)
 	}
-	return &handler{log: logger, conf: conf, store: store}, nil
+	return &handler{log: logger, conf: conf, store: store, db: db}, nil
 }
 
 func (h *handler) Register(router *chi.Mux) {
-	router.Post("/", func(writer http.ResponseWriter, request *http.Request) {
-		h.CreateURL(writer, request)
-	})
+	router.Post("/", h.CreateURL)
 
-	router.Get("/{id}", func(writer http.ResponseWriter, request *http.Request) {
-		h.GetURLByID(writer, request)
-	})
+	router.Get("/{id}", h.GetURLByID)
 
-	router.Post("/api/shorten", func(writer http.ResponseWriter, request *http.Request) {
-		h.URLByJSON(writer, request)
-	})
+	router.Post("/api/shorten", h.URLByJSON)
+
+	router.Get("/ping", h.GetPing)
 }
 
 func (h *handler) CreateURL(w http.ResponseWriter, r *http.Request) {
@@ -148,4 +146,13 @@ func (h *handler) URLByJSON(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
+}
+
+func (h *handler) GetPing(w http.ResponseWriter, r *http.Request) {
+	err := h.db.Ping()
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
 }

@@ -1,6 +1,7 @@
 package server
 
 import (
+	"database/sql"
 	"fmt"
 	"net/http"
 
@@ -12,12 +13,12 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-func Start(conf config.Config, log *zap.SugaredLogger) error {
+func Start(conf config.Config, log *zap.SugaredLogger, db *sql.DB) error {
 	router := chi.NewRouter()
 	middleware := middlewares.Middleware{Log: log}
 	router.Use(middleware.LogHandle, middleware.GzipCompressHandle, middleware.GzipDecompressMiddleware)
 
-	handler, err := handlers.NewHandler(log, conf)
+	handler, err := handlers.NewHandler(log, conf, db)
 	if err != nil {
 		return fmt.Errorf("handler creation error: %w", err)
 	}
