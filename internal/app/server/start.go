@@ -1,7 +1,6 @@
 package server
 
 import (
-	"database/sql"
 	"fmt"
 	"net/http"
 
@@ -13,17 +12,20 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-func Start(conf config.Config, log *zap.SugaredLogger, db *sql.DB) error {
+func Start(conf config.Config, log *zap.SugaredLogger) error {
 	router := chi.NewRouter()
 	middleware := middlewares.Middleware{Log: log}
 	router.Use(middleware.LogHandle, middleware.GzipCompressHandle, middleware.GzipDecompressMiddleware)
 
-	handler := handlers.NewHandler(log)
-	handler.Register(router, conf, db)
-
-	err := http.ListenAndServe(conf.Address, router)
+	handler, err := handlers.NewHandler(log, conf)
 	if err != nil {
-		log.Errorw("server serving error", err)
+		return fmt.Errorf("handler creation error: %w", err)
+	}
+
+	handler.Register(router)
+
+	err = http.ListenAndServe(conf.Address, router)
+	if err != nil {
 		return fmt.Errorf("server serving error: %w", err)
 	}
 	return nil

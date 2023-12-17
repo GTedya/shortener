@@ -1,15 +1,18 @@
 package handlers
 
 import (
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
+	"go.uber.org/zap"
+
 	"github.com/GTedya/shortener/config"
+	"github.com/GTedya/shortener/internal/app/datastore"
 	"github.com/GTedya/shortener/internal/app/logger"
-	"github.com/GTedya/shortener/internal/helpers"
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -17,9 +20,7 @@ import (
 
 func Test_createURL(t *testing.T) {
 	conf := config.Config{Address: "localhost:8080", URL: "short"}
-	data := helpers.URLData{
-		URLMap: make(map[helpers.ShortURL]helpers.URL),
-	}
+
 	type args struct {
 		url         string
 		method      string
@@ -57,15 +58,24 @@ func Test_createURL(t *testing.T) {
 
 			w := httptest.NewRecorder()
 			log := logger.CreateLogger()
+			store, err := datastore.NewStore(conf)
+			if err != nil {
+				t.Log(err)
+			}
 
-			h := &handler{Log: log}
-			h.CreateURL(w, request, conf, &data)
+			h := &handler{log: log, conf: conf, store: store}
+			h.CreateURL(w, request)
 
 			res := w.Result()
 
 			assert.Equal(t, test.want.code, res.StatusCode)
 
-			defer res.Body.Close()
+			defer func() {
+				err := res.Body.Close()
+				if err != nil {
+					t.Log(fmt.Errorf("response body closing error: %w", err))
+				}
+			}()
 
 			resBody, err := io.ReadAll(res.Body)
 			require.NotEmpty(t, resBody)
@@ -78,10 +88,8 @@ func Test_createURL(t *testing.T) {
 }
 
 func Test_getURLByID(t *testing.T) {
-	data := helpers.URLData{
-		URLMap: make(map[helpers.ShortURL]helpers.URL),
-	}
-	data.URLMap[helpers.ShortURL{URL: "testID"}] = helpers.URL{URL: "http://localhost:8080/testID"}
+	data := make(map[string]string)
+	data["testID"] = "http://localhost:8080/testID"
 
 	type args struct {
 		url         string
@@ -104,7 +112,7 @@ func Test_getURLByID(t *testing.T) {
 			want: want{
 				code:        307,
 				contentType: "text/plain; application/json",
-				location:    data.URLMap[helpers.ShortURL{URL: "testID"}].URL,
+				location:    data["testID"],
 			},
 			args: args{
 				url:         "http://localhost:8080/testID",
@@ -116,9 +124,21 @@ func Test_getURLByID(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			r := chi.NewRouter()
-			h := &handler{}
+			conf := config.Config{Address: "localhost:8080", URL: "short"}
+			log := &zap.SugaredLogger{}
+			store, err := datastore.NewStore(conf)
+			if err != nil {
+				t.Log(err)
+			}
+
+			h := handler{log: log, conf: conf, store: store}
+			err = h.store.SaveURL("http://localhost:8080/testID", "testID")
+			if err != nil {
+				t.Log(err)
+			}
+
 			r.Get("/{id:[a-zA-Z0-9]+}", func(writer http.ResponseWriter, request *http.Request) {
-				h.GetURLByID(writer, request, data)
+				h.GetURLByID(writer, request)
 			})
 
 			req := httptest.NewRequest(http.MethodGet, "/testID", nil)
@@ -127,7 +147,12 @@ func Test_getURLByID(t *testing.T) {
 			r.ServeHTTP(recorder, req)
 
 			res := recorder.Result()
-			defer res.Body.Close()
+			defer func() {
+				err := res.Body.Close()
+				if err != nil {
+					t.Log(fmt.Errorf("response body closing error: %w", err))
+				}
+			}()
 
 			assert.Equal(t, test.want.code, res.StatusCode)
 
@@ -139,11 +164,13 @@ func Test_getURLByID(t *testing.T) {
 
 func TestJsonHandler(t *testing.T) {
 	conf := config.Config{Address: "localhost:8080", URL: "short"}
-	data := helpers.URLData{
-		URLMap: make(map[helpers.ShortURL]helpers.URL),
-	}
 	log := logger.CreateLogger()
-	h := &handler{Log: log}
+	store, err := datastore.NewStore(conf)
+	if err != nil {
+		t.Log(err)
+	}
+
+	h := &handler{log: log, conf: conf, store: store}
 
 	// Test cases
 	tests := []struct {
@@ -179,7 +206,7 @@ func TestJsonHandler(t *testing.T) {
 
 			w := httptest.NewRecorder()
 
-			h.URLByJSON(w, request, conf, &data)
+			h.URLByJSON(w, request)
 			assert.Equal(t, test.expectedStatus, w.Code)
 		})
 	}
