@@ -30,7 +30,7 @@ type Store interface {
 }
 
 func NewHandler(logger *zap.SugaredLogger, conf config.Config, db *sql.DB) (Handler, error) {
-	store, err := datastore.NewStore(conf)
+	store, err := datastore.NewStore(conf, db)
 	if err != nil {
 		return nil, fmt.Errorf("store creation error: %w", err)
 	}
@@ -38,11 +38,17 @@ func NewHandler(logger *zap.SugaredLogger, conf config.Config, db *sql.DB) (Hand
 }
 
 func (h *handler) Register(router *chi.Mux) {
-	router.Post("/", h.CreateURL)
+	router.Post("/", func(writer http.ResponseWriter, request *http.Request) {
+		h.CreateURL(writer, request)
+	})
 
-	router.Get("/{id}", h.GetURLByID)
+	router.Get("/{id}", func(writer http.ResponseWriter, request *http.Request) {
+		h.GetURLByID(writer, request)
+	})
 
-	router.Post("/api/shorten", h.URLByJSON)
+	router.Post("/api/shorten", func(writer http.ResponseWriter, request *http.Request) {
+		h.URLByJSON(writer, request)
+	})
 
 	router.Get("/ping", h.GetPing)
 }

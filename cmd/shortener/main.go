@@ -4,7 +4,6 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 
 	"github.com/GTedya/shortener/config"
-	"github.com/GTedya/shortener/database"
 	"github.com/GTedya/shortener/internal/app/logger"
 	"github.com/GTedya/shortener/internal/app/server"
 )
@@ -13,7 +12,7 @@ func main() {
 	conf := config.GetConfig()
 	log := logger.CreateLogger()
 
-	db, err := database.CreateDBConn(conf, log)
+	db, err := config.CreateDBConn(conf, log)
 	if err != nil {
 		log.Errorw("database creation error", err)
 	}
