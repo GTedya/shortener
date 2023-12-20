@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -9,12 +10,14 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/GTedya/shortener/config"
+	"github.com/GTedya/shortener/database"
 	"github.com/GTedya/shortener/internal/app/datastore"
 	"github.com/go-chi/chi/v5"
 )
 
 type handler struct {
 	log   *zap.SugaredLogger
+	db    *database.DB
 	store Store
 	conf  config.Config
 }
@@ -27,12 +30,12 @@ type Store interface {
 	SaveURL(id, shortID string) error
 }
 
-func NewHandler(logger *zap.SugaredLogger, conf config.Config) (Handler, error) {
-	store, err := datastore.NewStore(conf)
+func NewHandler(logger *zap.SugaredLogger, conf config.Config, db *database.DB) (Handler, error) {
+	store, err := datastore.NewStore(conf, db)
 	if err != nil {
 		return nil, fmt.Errorf("store creation error: %w", err)
 	}
-	return &handler{log: logger, conf: conf, store: store}, nil
+	return &handler{log: logger, conf: conf, store: store, db: db}, nil
 }
 
 func (h *handler) Register(router *chi.Mux) {
@@ -47,6 +50,8 @@ func (h *handler) Register(router *chi.Mux) {
 	router.Post("/api/shorten", func(writer http.ResponseWriter, request *http.Request) {
 		h.URLByJSON(writer, request)
 	})
+
+	router.Get("/ping", h.GetPing)
 }
 
 func (h *handler) CreateURL(w http.ResponseWriter, r *http.Request) {
@@ -148,4 +153,13 @@ func (h *handler) URLByJSON(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
+}
+
+func (h *handler) GetPing(w http.ResponseWriter, r *http.Request) {
+	err := h.db.Ping(context.TODO())
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
 }

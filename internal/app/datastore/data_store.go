@@ -1,11 +1,14 @@
 package datastore
 
 import (
+	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 
 	"github.com/GTedya/shortener/config"
+	"github.com/GTedya/shortener/database"
 	"github.com/GTedya/shortener/internal/helpers"
 )
 
@@ -15,8 +18,13 @@ type memoryStore struct {
 	data map[string]string
 	conf config.Config
 }
+
 type fileStore struct {
 	memoryStore
+}
+
+type databaseStore struct {
+	db *database.DB
 }
 
 type Store interface {
@@ -24,11 +32,16 @@ type Store interface {
 	SaveURL(id, shortID string) error
 }
 
-func NewStore(conf config.Config) (Store, error) {
+func NewStore(conf config.Config, db *database.DB) (Store, error) {
 	var store Store
 	data := make(map[string]string)
-
 	store = memoryStore{conf: conf, data: data}
+
+	if len(conf.DatabaseDSN) != 0 {
+		store = databaseStore{db: db}
+		return store, nil
+	}
+
 	if len(conf.FileStoragePath) != 0 {
 		err := helpers.FileData(data, conf.FileStoragePath)
 		if err != nil {
@@ -51,6 +64,17 @@ func (fs fileStore) GetURL(shortID string) (string, error) {
 	url, err := fs.memoryStore.GetURL(shortID)
 	if err != nil {
 		return "", err
+	}
+	return url, nil
+}
+
+func (ds databaseStore) GetURL(shortID string) (string, error) {
+	url, err := ds.db.GetURL(shortID)
+	switch {
+	case errors.Is(err, sql.ErrNoRows):
+		return "", fmt.Errorf("URL not found in database: %w", err)
+	case err != nil:
+		return "", fmt.Errorf("query error: %w", err)
 	}
 	return url, nil
 }
@@ -95,6 +119,17 @@ func (fs fileStore) SaveURL(id, shortID string) error {
 	err = os.WriteFile(filePath, encoded, writingPermission)
 	if err != nil {
 		return fmt.Errorf("file writing error: %w", err)
+	}
+	return nil
+}
+
+func (ds databaseStore) SaveURL(id, shortID string) error {
+	rows, err := ds.db.SaveURL(id, shortID)
+	if err != nil {
+		return fmt.Errorf("saving url query error: %w", err)
+	}
+	if rows != 1 {
+		return fmt.Errorf("expected to affect 1 row, affected %d", rows)
 	}
 	return nil
 }
