@@ -54,7 +54,10 @@ func (db *DB) Close() {
 
 func (db *DB) Ping(ctx context.Context) error {
 	err := db.pool.Ping(ctx)
-	return fmt.Errorf("ping error: %w", err)
+	if err != nil {
+		return fmt.Errorf("ping error: %w", err)
+	}
+	return nil
 }
 
 func (db *DB) GetURL(shortID string) (string, error) {
