@@ -8,6 +8,7 @@ import (
 	"os"
 
 	"github.com/GTedya/shortener/config"
+	"github.com/GTedya/shortener/database"
 	"github.com/GTedya/shortener/internal/helpers"
 )
 
@@ -23,7 +24,7 @@ type fileStore struct {
 }
 
 type databaseStore struct {
-	db *sql.DB
+	db *database.DB
 }
 
 type Store interface {
@@ -31,7 +32,7 @@ type Store interface {
 	SaveURL(id, shortID string) error
 }
 
-func NewStore(conf config.Config, db *sql.DB) (Store, error) {
+func NewStore(conf config.Config, db *database.DB) (Store, error) {
 	var store Store
 	data := make(map[string]string)
 	store = memoryStore{conf: conf, data: data}
@@ -68,9 +69,7 @@ func (fs fileStore) GetURL(shortID string) (string, error) {
 }
 
 func (ds databaseStore) GetURL(shortID string) (string, error) {
-	var url string
-
-	err := ds.db.QueryRow("SELECT url FROM urls WHERE short_url = $1", shortID).Scan(&url)
+	url, err := ds.db.GetURL(shortID)
 	switch {
 	case errors.Is(err, sql.ErrNoRows):
 		return "", fmt.Errorf("URL not found in database: %w", err)
@@ -125,14 +124,9 @@ func (fs fileStore) SaveURL(id, shortID string) error {
 }
 
 func (ds databaseStore) SaveURL(id, shortID string) error {
-	result, err := ds.db.Exec("INSERT INTO urls (short_url, url) VALUES ($1, $2) ", shortID, id)
+	rows, err := ds.db.SaveURL(id, shortID)
 	if err != nil {
 		return fmt.Errorf("saving url query error: %w", err)
-	}
-
-	rows, err := result.RowsAffected()
-	if err != nil {
-		return fmt.Errorf("rows affected error: %w", err)
 	}
 	if rows != 1 {
 		return fmt.Errorf("expected to affect 1 row, affected %d", rows)

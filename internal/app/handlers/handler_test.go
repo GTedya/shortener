@@ -14,7 +14,7 @@ import (
 	"github.com/GTedya/shortener/internal/app/datastore"
 	"github.com/GTedya/shortener/internal/app/logger"
 
-	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/GTedya/shortener/database"
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -22,10 +22,6 @@ import (
 
 func Test_createURL(t *testing.T) {
 	conf := config.Config{Address: "localhost:8080", URL: "short"}
-	db, _, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
-	if err != nil {
-		t.Fatalf("err not expected while open a mock db, %v", err)
-	}
 
 	type args struct {
 		url         string
@@ -64,6 +60,8 @@ func Test_createURL(t *testing.T) {
 
 			w := httptest.NewRecorder()
 			log := logger.CreateLogger()
+
+			db := &database.DB{}
 			store, err := datastore.NewStore(conf, db)
 			if err != nil {
 				t.Log(err)
@@ -96,10 +94,6 @@ func Test_createURL(t *testing.T) {
 func Test_getURLByID(t *testing.T) {
 	data := make(map[string]string)
 	data["testID"] = "http://localhost:8080/testID"
-	db, _, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
-	if err != nil {
-		t.Fatalf("err not expected while open a mock db, %v", err)
-	}
 
 	type args struct {
 		url         string
@@ -136,6 +130,8 @@ func Test_getURLByID(t *testing.T) {
 			r := chi.NewRouter()
 			conf := config.Config{Address: "localhost:8080", URL: "short"}
 			log := &zap.SugaredLogger{}
+
+			db := &database.DB{}
 			store, err := datastore.NewStore(conf, db)
 			if err != nil {
 				t.Log(err)
@@ -173,11 +169,7 @@ func Test_getURLByID(t *testing.T) {
 }
 
 func TestJsonHandler(t *testing.T) {
-	db, _, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
-	if err != nil {
-		t.Fatalf("err not expected while open a mock db, %v", err)
-	}
-
+	db := &database.DB{}
 	conf := config.Config{Address: "localhost:8080", URL: "short"}
 	log := logger.CreateLogger()
 	store, err := datastore.NewStore(conf, db)

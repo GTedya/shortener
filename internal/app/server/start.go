@@ -1,19 +1,19 @@
 package server
 
 import (
-	"database/sql"
 	"fmt"
 	"net/http"
 
 	"go.uber.org/zap"
 
 	"github.com/GTedya/shortener/config"
+	"github.com/GTedya/shortener/database"
 	"github.com/GTedya/shortener/internal/app/handlers"
 	"github.com/GTedya/shortener/internal/app/middlewares"
 	"github.com/go-chi/chi/v5"
 )
 
-func Start(conf config.Config, log *zap.SugaredLogger, db *sql.DB) error {
+func Start(conf config.Config, log *zap.SugaredLogger, db *database.DB) error {
 	router := chi.NewRouter()
 	middleware := middlewares.Middleware{Log: log}
 	router.Use(middleware.LogHandle, middleware.GzipCompressHandle, middleware.GzipDecompressMiddleware)

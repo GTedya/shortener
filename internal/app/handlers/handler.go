@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	"database/sql"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -10,13 +10,14 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/GTedya/shortener/config"
+	"github.com/GTedya/shortener/database"
 	"github.com/GTedya/shortener/internal/app/datastore"
 	"github.com/go-chi/chi/v5"
 )
 
 type handler struct {
 	log   *zap.SugaredLogger
-	db    *sql.DB
+	db    *database.DB
 	store Store
 	conf  config.Config
 }
@@ -29,7 +30,7 @@ type Store interface {
 	SaveURL(id, shortID string) error
 }
 
-func NewHandler(logger *zap.SugaredLogger, conf config.Config, db *sql.DB) (Handler, error) {
+func NewHandler(logger *zap.SugaredLogger, conf config.Config, db *database.DB) (Handler, error) {
 	store, err := datastore.NewStore(conf, db)
 	if err != nil {
 		return nil, fmt.Errorf("store creation error: %w", err)
@@ -155,7 +156,7 @@ func (h *handler) URLByJSON(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *handler) GetPing(w http.ResponseWriter, r *http.Request) {
-	err := h.db.Ping()
+	err := h.db.Ping(context.TODO())
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
