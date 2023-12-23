@@ -24,6 +24,7 @@ type handler struct {
 
 const urlLen = 6
 const contentType = "Content-Type"
+const appJson = "application/json"
 
 type Store interface {
 	GetURL(shortID string) (string, error)
@@ -115,7 +116,7 @@ func (h *handler) GetURLByID(w http.ResponseWriter, r *http.Request) {
 
 func (h *handler) URLByJSON(w http.ResponseWriter, r *http.Request) {
 	content := r.Header.Get(contentType)
-	if content != "application/json" {
+	if content != appJson {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -148,7 +149,7 @@ func (h *handler) URLByJSON(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Add(contentType, "application/json")
+	w.Header().Add(contentType, appJson)
 
 	encodedID := ShortURL{URL: fmt.Sprintf("http://%s/%s", h.conf.Address, shortID)}
 	marshal, err := json.Marshal(encodedID)
@@ -178,7 +179,7 @@ func (h *handler) GetPing(w http.ResponseWriter, r *http.Request) {
 
 func (h *handler) Batch(w http.ResponseWriter, r *http.Request) {
 	content := r.Header.Get(contentType)
-	if content != "application/json" {
+	if content != appJson {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -224,7 +225,8 @@ func (h *handler) Batch(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	w.Header().Add(contentType, "application/json")
+	w.Header().Add(contentType, appJson)
+
 	w.WriteHeader(http.StatusCreated)
 	_, err = w.Write(marshal)
 	if err != nil {

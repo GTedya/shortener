@@ -63,8 +63,10 @@ func (db *DB) Ping(ctx context.Context) error {
 func (db *DB) GetURL(shortID string) (string, error) {
 	var url string
 	err := db.pool.QueryRow(context.TODO(), "SELECT url FROM urls WHERE short_url = $1", shortID).Scan(&url)
-
-	return url, fmt.Errorf("query error: %w", err)
+	if err != nil {
+		return "", fmt.Errorf("query error: %w", err)
+	}
+	return url, nil
 }
 
 func (db *DB) SaveURL(id, shortID string) (int64, error) {
