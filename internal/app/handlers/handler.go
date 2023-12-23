@@ -24,7 +24,7 @@ type handler struct {
 
 const urlLen = 6
 const contentType = "Content-Type"
-const appJson = "application/json"
+const appJSON = "application/json"
 
 type Store interface {
 	GetURL(shortID string) (string, error)
@@ -116,7 +116,7 @@ func (h *handler) GetURLByID(w http.ResponseWriter, r *http.Request) {
 
 func (h *handler) URLByJSON(w http.ResponseWriter, r *http.Request) {
 	content := r.Header.Get(contentType)
-	if content != appJson {
+	if content != appJSON {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -149,7 +149,7 @@ func (h *handler) URLByJSON(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Add(contentType, appJson)
+	w.Header().Add(contentType, appJSON)
 
 	encodedID := ShortURL{URL: fmt.Sprintf("http://%s/%s", h.conf.Address, shortID)}
 	marshal, err := json.Marshal(encodedID)
@@ -179,7 +179,7 @@ func (h *handler) GetPing(w http.ResponseWriter, r *http.Request) {
 
 func (h *handler) Batch(w http.ResponseWriter, r *http.Request) {
 	content := r.Header.Get(contentType)
-	if content != appJson {
+	if content != appJSON {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -208,7 +208,8 @@ func (h *handler) Batch(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 		shortID := createUniqueID(h.store.GetURL, urlLen)
-		res := resMultipleURL{CorrelationID: url.CorrelationID, ShortURL: shortID}
+		res := resMultipleURL{CorrelationID: url.CorrelationID,
+			ShortURL: fmt.Sprintf("http://%s/%s", h.conf.Address, shortID)}
 		err = h.store.SaveURL(url.OriginalURL, shortID)
 		if err != nil {
 			h.log.Errorw("data saving error", err)
@@ -225,7 +226,7 @@ func (h *handler) Batch(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	w.Header().Add(contentType, appJson)
+	w.Header().Add(contentType, appJSON)
 
 	w.WriteHeader(http.StatusCreated)
 	_, err = w.Write(marshal)
