@@ -30,6 +30,16 @@ type Store interface {
 	SaveURL(id, shortID string) error
 }
 
+type reqMultipleURL struct {
+	CorrelationID string `json:"correlation_id"`
+	OriginalURL   string `json:"original_url"`
+}
+
+type resMultipleURL struct {
+	CorrelationID string `json:"correlation_id"`
+	ShortURL      string `json:"short_url"`
+}
+
 func NewHandler(logger *zap.SugaredLogger, conf config.Config, db *database.DB) (Handler, error) {
 	store, err := datastore.NewStore(conf, db)
 	if err != nil {
@@ -52,6 +62,8 @@ func (h *handler) Register(router *chi.Mux) {
 	})
 
 	router.Get("/ping", h.GetPing)
+
+	router.Post("/api/shorten/batch", h.Batch)
 }
 
 func (h *handler) CreateURL(w http.ResponseWriter, r *http.Request) {
@@ -162,4 +174,62 @@ func (h *handler) GetPing(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusOK)
+}
+
+func (h *handler) Batch(w http.ResponseWriter, r *http.Request) {
+	content := r.Header.Get(contentType)
+	if content != "application/json" {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	var reqUrls []reqMultipleURL
+	body, err := io.ReadAll(r.Body)
+
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	if len(body) == 0 {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	resUrls := make([]resMultipleURL, 0)
+
+	err = json.Unmarshal(body, &reqUrls)
+	if err != nil {
+		h.log.Errorw("Json unmarshalling error", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	for _, url := range reqUrls {
+		if len(url.OriginalURL) == 0 {
+			break
+		}
+		shortID := createUniqueID(h.store.GetURL, urlLen)
+		res := resMultipleURL{CorrelationID: url.CorrelationID, ShortURL: shortID}
+		err = h.store.SaveURL(url.OriginalURL, shortID)
+		if err != nil {
+			h.log.Errorw("data saving error", err)
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		resUrls = append(resUrls, res)
+	}
+
+	marshal, err := json.Marshal(resUrls)
+	if err != nil {
+		h.log.Errorw("Json marshalling error", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusCreated)
+	_, err = w.Write(marshal)
+	if err != nil {
+		h.log.Errorw("data writing error:", err)
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
 }

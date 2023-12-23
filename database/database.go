@@ -68,9 +68,20 @@ func (db *DB) GetURL(shortID string) (string, error) {
 }
 
 func (db *DB) SaveURL(id, shortID string) (int64, error) {
-	result, err := db.pool.Exec(context.TODO(), "INSERT INTO urls (short_url, url) VALUES ($1, $2) ", shortID, id)
+	ctx := context.TODO()
+	tx, err := db.pool.Begin(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("transaction error: %w", err)
+	}
+
+	result, err := tx.Exec(ctx, "INSERT INTO urls (short_url, url) VALUES ($1, $2) ", shortID, id)
 	if err != nil {
 		return 0, fmt.Errorf("saving url execution error: %w", err)
+	}
+
+	err = tx.Commit(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("transaction commit error: %w", err)
 	}
 	rows := result.RowsAffected()
 	return rows, nil
