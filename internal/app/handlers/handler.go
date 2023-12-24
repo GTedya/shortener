@@ -5,16 +5,16 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/jackc/pgerrcode"
 	"io"
 	"net/http"
-
-	"go.uber.org/zap"
 
 	"github.com/GTedya/shortener/config"
 	"github.com/GTedya/shortener/database"
 	"github.com/GTedya/shortener/internal/app/datastore"
+
 	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5/pgconn"
+	"go.uber.org/zap"
 )
 
 type handler struct {
@@ -87,9 +87,9 @@ func (h *handler) CreateURL(w http.ResponseWriter, r *http.Request) {
 
 	err = h.store.SaveURL(id, shortID)
 
-	unique := errors.New(pgerrcode.UniqueViolation)
+	var pqError *pgconn.PgError
 
-	if errors.As(err, &unique) {
+	if errors.As(err, &pqError) {
 		w.WriteHeader(http.StatusConflict)
 		shortID, err = h.db.GetShortURL(id)
 		if err != nil {
@@ -162,11 +162,12 @@ func (h *handler) URLByJSON(w http.ResponseWriter, r *http.Request) {
 
 	id := u.URL
 	shortID := createUniqueID(h.store.GetURL, urlLen)
-	unique := errors.New(pgerrcode.UniqueViolation)
 
 	err = h.store.SaveURL(id, shortID)
 
-	if errors.As(err, &unique) {
+	var pqError *pgconn.PgError
+
+	if errors.As(err, &pqError) {
 		w.WriteHeader(http.StatusConflict)
 		shortID, err = h.db.GetShortURL(id)
 		if err != nil {
