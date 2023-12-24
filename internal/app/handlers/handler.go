@@ -152,6 +152,8 @@ func (h *handler) URLByJSON(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	w.Header().Set(contentType, appJSON)
+
 	var u URL
 	err = json.Unmarshal(body, &u)
 	if err != nil {
@@ -168,7 +170,6 @@ func (h *handler) URLByJSON(w http.ResponseWriter, r *http.Request) {
 	var pqError *pgconn.PgError
 
 	if errors.As(err, &pqError) {
-		w.Header().Add(contentType, appJSON)
 
 		w.WriteHeader(http.StatusConflict)
 		shortID, err = h.db.GetShortURL(id)
@@ -197,8 +198,6 @@ func (h *handler) URLByJSON(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-
-	w.Header().Add(contentType, appJSON)
 
 	encodedID := ShortURL{URL: fmt.Sprintf("http://%s/%s", h.conf.Address, shortID)}
 	marshal, err := json.Marshal(encodedID)
