@@ -60,9 +60,18 @@ func (db *DB) Ping(ctx context.Context) error {
 	return nil
 }
 
-func (db *DB) GetURL(shortID string) (string, error) {
+func (db *DB) GetBasicURL(shortID string) (string, error) {
 	var url string
 	err := db.pool.QueryRow(context.TODO(), "SELECT url FROM urls WHERE short_url = $1", shortID).Scan(&url)
+	if err != nil {
+		return "", fmt.Errorf("query error: %w", err)
+	}
+	return url, nil
+}
+
+func (db *DB) GetShortURL(id string) (string, error) {
+	var url string
+	err := db.pool.QueryRow(context.TODO(), "SELECT short_url FROM urls WHERE url = $1", id).Scan(&url)
 	if err != nil {
 		return "", fmt.Errorf("query error: %w", err)
 	}
@@ -75,8 +84,7 @@ func (db *DB) SaveURL(id, shortID string) (int64, error) {
 	if err != nil {
 		return 0, fmt.Errorf("transaction error: %w", err)
 	}
-
-	result, err := tx.Exec(ctx, "INSERT INTO urls (short_url, url) VALUES ($1, $2) ", shortID, id)
+	result, err := tx.Exec(ctx, "INSERT INTO urls (short_url, url) VALUES ($1, $2)", shortID, id)
 	if err != nil {
 		return 0, fmt.Errorf("saving url execution error: %w", err)
 	}

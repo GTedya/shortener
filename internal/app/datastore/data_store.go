@@ -69,7 +69,7 @@ func (fs fileStore) GetURL(shortID string) (string, error) {
 }
 
 func (ds databaseStore) GetURL(shortID string) (string, error) {
-	url, err := ds.db.GetURL(shortID)
+	url, err := ds.db.GetBasicURL(shortID)
 	switch {
 	case errors.Is(err, sql.ErrNoRows):
 		return "", fmt.Errorf("URL not found in database: %w", err)

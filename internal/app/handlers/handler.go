@@ -3,7 +3,9 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"github.com/jackc/pgerrcode"
 	"io"
 	"net/http"
 
@@ -79,20 +81,39 @@ func (h *handler) CreateURL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	id := string(body)
+	w.Header().Add(contentType, "text/plain; application/json")
 
 	shortID := createUniqueID(h.store.GetURL, urlLen)
 
 	err = h.store.SaveURL(id, shortID)
+
+	unique := errors.New(pgerrcode.UniqueViolation)
+
+	if errors.As(err, &unique) {
+		w.WriteHeader(http.StatusConflict)
+		shortID, err = h.db.GetShortURL(id)
+		if err != nil {
+			h.log.Errorw("short url getting error", err)
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		if _, err = w.Write([]byte(fmt.Sprintf("%s/%s", h.conf.URL, shortID))); err != nil {
+			h.log.Errorw("data writing error", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		return
+	}
+
 	if err != nil {
 		h.log.Errorw("data saving error", err)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	w.Header().Add(contentType, "text/plain; application/json")
 	w.WriteHeader(http.StatusCreated)
 
-	if _, err := w.Write([]byte(fmt.Sprintf("%s/%s", h.conf.URL, shortID))); err != nil {
+	if _, err = w.Write([]byte(fmt.Sprintf("%s/%s", h.conf.URL, shortID))); err != nil {
 		h.log.Errorw("data writing error", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -141,8 +162,33 @@ func (h *handler) URLByJSON(w http.ResponseWriter, r *http.Request) {
 
 	id := u.URL
 	shortID := createUniqueID(h.store.GetURL, urlLen)
+	unique := errors.New(pgerrcode.UniqueViolation)
 
 	err = h.store.SaveURL(id, shortID)
+
+	if errors.As(err, &unique) {
+		w.WriteHeader(http.StatusConflict)
+		shortID, err = h.db.GetShortURL(id)
+		if err != nil {
+			h.log.Errorw("short url getting error", err)
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		encodedID := ShortURL{URL: fmt.Sprintf("http://%s/%s", h.conf.Address, shortID)}
+		marshal, err := json.Marshal(encodedID)
+		if err != nil {
+			h.log.Errorw("Json marshalling error", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		_, err = w.Write(marshal)
+		if err != nil {
+			h.log.Errorw("data writing error:", err)
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		return
+	}
 	if err != nil {
 		h.log.Errorw("data saving error", err)
 		w.WriteHeader(http.StatusBadRequest)
