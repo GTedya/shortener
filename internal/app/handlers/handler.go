@@ -168,9 +168,9 @@ func (h *handler) URLByJSON(w http.ResponseWriter, r *http.Request) {
 	var pqError *pgconn.PgError
 
 	if errors.As(err, &pqError) {
-		w.WriteHeader(http.StatusConflict)
 		w.Header().Add(contentType, appJSON)
 
+		w.WriteHeader(http.StatusConflict)
 		shortID, err = h.db.GetShortURL(id)
 		if err != nil {
 			h.log.Errorw("short url getting error", err)
@@ -198,6 +198,8 @@ func (h *handler) URLByJSON(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	w.Header().Add(contentType, appJSON)
+
 	encodedID := ShortURL{URL: fmt.Sprintf("http://%s/%s", h.conf.Address, shortID)}
 	marshal, err := json.Marshal(encodedID)
 	if err != nil {
@@ -207,8 +209,6 @@ func (h *handler) URLByJSON(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusCreated)
-	w.Header().Add(contentType, appJSON)
-
 	_, err = w.Write(marshal)
 	if err != nil {
 		h.log.Errorw("data writing error:", err)
