@@ -159,7 +159,6 @@ func (h *handler) URLByJSON(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	w.Header().Add(contentType, appJSON)
 
 	id := u.URL
 	shortID := createUniqueID(h.store.GetURL, urlLen)
@@ -170,6 +169,8 @@ func (h *handler) URLByJSON(w http.ResponseWriter, r *http.Request) {
 
 	if errors.As(err, &pqError) {
 		w.WriteHeader(http.StatusConflict)
+		w.Header().Add(contentType, appJSON)
+
 		shortID, err = h.db.GetShortURL(id)
 		if err != nil {
 			h.log.Errorw("short url getting error", err)
@@ -206,6 +207,8 @@ func (h *handler) URLByJSON(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusCreated)
+	w.Header().Add(contentType, appJSON)
+
 	_, err = w.Write(marshal)
 	if err != nil {
 		h.log.Errorw("data writing error:", err)
