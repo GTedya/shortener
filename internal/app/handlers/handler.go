@@ -13,8 +13,6 @@ import (
 	"github.com/GTedya/shortener/internal/app/datastore"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/jackc/pgerrcode"
-	"github.com/jackc/pgx/v5/pgconn"
 	"go.uber.org/zap"
 )
 
@@ -72,7 +70,7 @@ func (h *handler) Register(router *chi.Mux) {
 
 func (h *handler) CreateURL(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(r.Body)
-
+	var shortID string
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
@@ -83,14 +81,11 @@ func (h *handler) CreateURL(w http.ResponseWriter, r *http.Request) {
 	}
 	id := string(body)
 	w.Header().Add(contentType, "text/plain; application/json")
-
-	shortID := createUniqueID(h.store.GetURL, urlLen)
+	shortID = createUniqueID(h.store.GetURL, urlLen)
 
 	err = h.store.SaveURL(id, shortID)
 
-	var pqError *pgconn.PgError
-
-	if errors.As(err, &pqError) && pqError.Code == pgerrcode.UniqueViolation {
+	if errors.Is(err, datastore.DuplicateError) {
 		w.WriteHeader(http.StatusConflict)
 		shortID, err = h.db.GetShortURL(id)
 		if err != nil {
@@ -168,10 +163,7 @@ func (h *handler) URLByJSON(w http.ResponseWriter, r *http.Request) {
 
 	err = h.store.SaveURL(id, shortID)
 
-	var pqError *pgconn.PgError
-
-	if errors.As(err, &pqError) && pqError.Code == pgerrcode.UniqueViolation {
-		h.log.Info("Зашли")
+	if errors.Is(err, datastore.DuplicateError) {
 		w.WriteHeader(http.StatusConflict)
 		shortID, err = h.db.GetShortURL(id)
 		if err != nil {
@@ -192,9 +184,6 @@ func (h *handler) URLByJSON(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		h.log.Info("Вышли")
-		h.log.Info(w.Header().Get(contentType))
-		h.log.Info(marshal)
 		return
 	}
 	if err != nil {
