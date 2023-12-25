@@ -91,6 +91,7 @@ func (h *handler) CreateURL(w http.ResponseWriter, r *http.Request) {
 	var pqError *pgconn.PgError
 
 	if errors.As(err, &pqError) && pqError.Code == pgerrcode.UniqueViolation {
+		h.log.Error("Зашли")
 		w.WriteHeader(http.StatusConflict)
 		shortID, err = h.db.GetShortURL(id)
 		if err != nil {
@@ -103,6 +104,8 @@ func (h *handler) CreateURL(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
+		h.log.Error("Вышли")
+		h.log.Error(w.Header().Get(contentType))
 		return
 	}
 
