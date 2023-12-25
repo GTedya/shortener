@@ -5,9 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
+
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5/pgconn"
-	"os"
 
 	"github.com/GTedya/shortener/config"
 	"github.com/GTedya/shortener/database"
@@ -16,7 +17,7 @@ import (
 
 const writingPermission = 0600
 
-var DuplicateError = errors.New("this url already exists")
+var ErrDuplicate = errors.New("this url already exists")
 
 type memoryStore struct {
 	data map[string]string
@@ -132,7 +133,7 @@ func (ds databaseStore) SaveURL(id, shortID string) error {
 
 	rows, err := ds.db.SaveURL(id, shortID)
 	if errors.As(err, &pgError) && pgError.Code == pgerrcode.UniqueViolation {
-		return DuplicateError
+		return ErrDuplicate
 	}
 	if err != nil {
 		return fmt.Errorf("saving url query error: %w", err)

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"time"
 
 	"github.com/GTedya/shortener/config"
 	"github.com/GTedya/shortener/database"
@@ -85,7 +86,7 @@ func (h *handler) CreateURL(w http.ResponseWriter, r *http.Request) {
 
 	err = h.store.SaveURL(id, shortID)
 
-	if errors.Is(err, datastore.DuplicateError) {
+	if errors.Is(err, datastore.ErrDuplicate) {
 		w.WriteHeader(http.StatusConflict)
 		shortID, err = h.db.GetShortURL(id)
 		if err != nil {
@@ -132,6 +133,7 @@ func (h *handler) GetURLByID(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *handler) URLByJSON(w http.ResponseWriter, r *http.Request) {
+	tim := time.Now()
 	content := r.Header.Get(contentType)
 	if content != appJSON {
 		w.WriteHeader(http.StatusBadRequest)
@@ -163,7 +165,8 @@ func (h *handler) URLByJSON(w http.ResponseWriter, r *http.Request) {
 
 	err = h.store.SaveURL(id, shortID)
 
-	if errors.Is(err, datastore.DuplicateError) {
+	if errors.Is(err, datastore.ErrDuplicate) {
+		h.log.Info(time.Since(tim))
 		w.WriteHeader(http.StatusConflict)
 		shortID, err = h.db.GetShortURL(id)
 		if err != nil {
@@ -178,12 +181,16 @@ func (h *handler) URLByJSON(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
+		h.log.Info(time.Since(tim))
+
 		_, err = w.Write(marshal)
 		if err != nil {
 			h.log.Errorw("data writing error:", err)
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
+		h.log.Info(time.Since(tim))
+
 		return
 	}
 	if err != nil {
