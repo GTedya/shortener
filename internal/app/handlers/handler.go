@@ -13,6 +13,7 @@ import (
 	"github.com/GTedya/shortener/internal/app/datastore"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5/pgconn"
 	"go.uber.org/zap"
 )
@@ -89,7 +90,7 @@ func (h *handler) CreateURL(w http.ResponseWriter, r *http.Request) {
 
 	var pqError *pgconn.PgError
 
-	if errors.As(err, &pqError) {
+	if errors.As(err, &pqError) && pqError.Code == pgerrcode.UniqueViolation {
 		w.WriteHeader(http.StatusConflict)
 		shortID, err = h.db.GetShortURL(id)
 		if err != nil {
@@ -169,8 +170,7 @@ func (h *handler) URLByJSON(w http.ResponseWriter, r *http.Request) {
 
 	var pqError *pgconn.PgError
 
-	if errors.As(err, &pqError) {
-
+	if errors.As(err, &pqError) && pqError.Code == pgerrcode.UniqueViolation {
 		w.WriteHeader(http.StatusConflict)
 		shortID, err = h.db.GetShortURL(id)
 		if err != nil {
