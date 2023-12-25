@@ -13,6 +13,8 @@ import (
 	"github.com/GTedya/shortener/config"
 	"github.com/GTedya/shortener/internal/app/datastore"
 	"github.com/GTedya/shortener/internal/app/logger"
+
+	"github.com/GTedya/shortener/database"
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -58,7 +60,9 @@ func Test_createURL(t *testing.T) {
 
 			w := httptest.NewRecorder()
 			log := logger.CreateLogger()
-			store, err := datastore.NewStore(conf)
+
+			db := &database.DB{}
+			store, err := datastore.NewStore(conf, db)
 			if err != nil {
 				t.Log(err)
 			}
@@ -126,7 +130,9 @@ func Test_getURLByID(t *testing.T) {
 			r := chi.NewRouter()
 			conf := config.Config{Address: "localhost:8080", URL: "short"}
 			log := &zap.SugaredLogger{}
-			store, err := datastore.NewStore(conf)
+
+			db := &database.DB{}
+			store, err := datastore.NewStore(conf, db)
 			if err != nil {
 				t.Log(err)
 			}
@@ -163,9 +169,10 @@ func Test_getURLByID(t *testing.T) {
 }
 
 func TestJsonHandler(t *testing.T) {
+	db := &database.DB{}
 	conf := config.Config{Address: "localhost:8080", URL: "short"}
 	log := logger.CreateLogger()
-	store, err := datastore.NewStore(conf)
+	store, err := datastore.NewStore(conf, db)
 	if err != nil {
 		t.Log(err)
 	}
