@@ -91,7 +91,6 @@ func (h *handler) CreateURL(w http.ResponseWriter, r *http.Request) {
 	var pqError *pgconn.PgError
 
 	if errors.As(err, &pqError) && pqError.Code == pgerrcode.UniqueViolation {
-		h.log.Error("Зашли")
 		w.WriteHeader(http.StatusConflict)
 		shortID, err = h.db.GetShortURL(id)
 		if err != nil {
@@ -104,8 +103,6 @@ func (h *handler) CreateURL(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		h.log.Error("Вышли")
-		h.log.Error(w.Header().Get(contentType))
 		return
 	}
 
@@ -174,6 +171,7 @@ func (h *handler) URLByJSON(w http.ResponseWriter, r *http.Request) {
 	var pqError *pgconn.PgError
 
 	if errors.As(err, &pqError) && pqError.Code == pgerrcode.UniqueViolation {
+		h.log.Info("Зашли")
 		w.WriteHeader(http.StatusConflict)
 		shortID, err = h.db.GetShortURL(id)
 		if err != nil {
@@ -194,6 +192,9 @@ func (h *handler) URLByJSON(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
+		h.log.Info("Вышли")
+		h.log.Info(w.Header().Get(contentType))
+		h.log.Info(marshal)
 		return
 	}
 	if err != nil {
@@ -209,7 +210,7 @@ func (h *handler) URLByJSON(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-
+	h.log.Info(marshal)
 	w.WriteHeader(http.StatusCreated)
 	_, err = w.Write(marshal)
 	if err != nil {
