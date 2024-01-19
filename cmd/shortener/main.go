@@ -2,7 +2,6 @@ package main
 
 import (
 	"github.com/GTedya/shortener/database"
-	_ "github.com/jackc/pgx/v5/stdlib"
 
 	"github.com/GTedya/shortener/config"
 	"github.com/GTedya/shortener/internal/app/logger"
@@ -13,7 +12,7 @@ func main() {
 	conf := config.GetConfig()
 	log := logger.CreateLogger()
 
-	db, err := database.NewDB(conf.DatabaseDSN)
+	db, err := database.NewDB(conf.DatabaseDSN, log)
 	if err != nil {
 		log.Errorw("database creation error", err)
 	}

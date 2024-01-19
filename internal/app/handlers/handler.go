@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"time"
 
 	"github.com/GTedya/shortener/config"
 	"github.com/GTedya/shortener/database"
@@ -29,8 +28,8 @@ const contentType = "Content-Type"
 const appJSON = "application/json"
 
 type Store interface {
-	GetURL(shortID string) (string, error)
-	SaveURL(id, shortID string) error
+	GetURL(ctx context.Context, shortID string) (string, error)
+	SaveURL(ctx context.Context, id, shortID string) error
 }
 
 type reqMultipleURL struct {
@@ -52,17 +51,11 @@ func NewHandler(logger *zap.SugaredLogger, conf config.Config, db *database.DB) 
 }
 
 func (h *handler) Register(router *chi.Mux) {
-	router.Post("/", func(writer http.ResponseWriter, request *http.Request) {
-		h.CreateURL(writer, request)
-	})
+	router.Post("/", h.CreateURL)
 
-	router.Get("/{id}", func(writer http.ResponseWriter, request *http.Request) {
-		h.GetURLByID(writer, request)
-	})
+	router.Get("/{id}", h.GetURLByID)
 
-	router.Post("/api/shorten", func(writer http.ResponseWriter, request *http.Request) {
-		h.URLByJSON(writer, request)
-	})
+	router.Post("/api/shorten", h.URLByJSON)
 
 	router.Get("/ping", h.GetPing)
 
@@ -82,9 +75,9 @@ func (h *handler) CreateURL(w http.ResponseWriter, r *http.Request) {
 	}
 	id := string(body)
 	w.Header().Add(contentType, "text/plain; application/json")
-	shortID = createUniqueID(h.store.GetURL, urlLen)
+	shortID = createUniqueID(r.Context(), h.store.GetURL, urlLen)
 
-	err = h.store.SaveURL(id, shortID)
+	err = h.store.SaveURL(r.Context(), id, shortID)
 
 	if errors.Is(err, datastore.ErrDuplicate) {
 		w.WriteHeader(http.StatusConflict)
@@ -120,7 +113,7 @@ func (h *handler) CreateURL(w http.ResponseWriter, r *http.Request) {
 func (h *handler) GetURLByID(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 
-	shortenURL, err := h.store.GetURL(id)
+	shortenURL, err := h.store.GetURL(r.Context(), id)
 	if err != nil {
 		h.log.Errorw("ID not found", id, err)
 		w.WriteHeader(http.StatusBadRequest)
@@ -133,7 +126,6 @@ func (h *handler) GetURLByID(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *handler) URLByJSON(w http.ResponseWriter, r *http.Request) {
-	tim := time.Now()
 	content := r.Header.Get(contentType)
 	if content != appJSON {
 		w.WriteHeader(http.StatusBadRequest)
@@ -161,12 +153,11 @@ func (h *handler) URLByJSON(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := u.URL
-	shortID := createUniqueID(h.store.GetURL, urlLen)
+	shortID := createUniqueID(r.Context(), h.store.GetURL, urlLen)
 
-	err = h.store.SaveURL(id, shortID)
+	err = h.store.SaveURL(r.Context(), id, shortID)
 
 	if errors.Is(err, datastore.ErrDuplicate) {
-		h.log.Info(time.Since(tim))
 		w.WriteHeader(http.StatusConflict)
 		shortID, err = h.db.GetShortURL(id)
 		if err != nil {
@@ -181,7 +172,6 @@ func (h *handler) URLByJSON(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		h.log.Info(time.Since(tim))
 
 		_, err = w.Write(marshal)
 		if err != nil {
@@ -189,8 +179,6 @@ func (h *handler) URLByJSON(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		h.log.Info(time.Since(tim))
-
 		return
 	}
 	if err != nil {
@@ -206,7 +194,6 @@ func (h *handler) URLByJSON(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	h.log.Info(marshal)
 	w.WriteHeader(http.StatusCreated)
 	_, err = w.Write(marshal)
 	if err != nil {
@@ -217,7 +204,7 @@ func (h *handler) URLByJSON(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *handler) GetPing(w http.ResponseWriter, r *http.Request) {
-	err := h.db.Ping(context.TODO())
+	err := h.db.Ping(r.Context())
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -255,10 +242,10 @@ func (h *handler) Batch(w http.ResponseWriter, r *http.Request) {
 		if len(url.OriginalURL) == 0 {
 			break
 		}
-		shortID := createUniqueID(h.store.GetURL, urlLen)
+		shortID := createUniqueID(r.Context(), h.store.GetURL, urlLen)
 		res := resMultipleURL{CorrelationID: url.CorrelationID,
 			ShortURL: fmt.Sprintf("http://%s/%s", h.conf.Address, shortID)}
-		err = h.store.SaveURL(url.OriginalURL, shortID)
+		err = h.store.SaveURL(r.Context(), url.OriginalURL, shortID)
 		if err != nil {
 			h.log.Errorw("data saving error", err)
 			w.WriteHeader(http.StatusBadRequest)

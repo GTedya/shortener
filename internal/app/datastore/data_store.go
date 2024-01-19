@@ -1,6 +1,7 @@
 package datastore
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"errors"
@@ -33,8 +34,8 @@ type databaseStore struct {
 }
 
 type Store interface {
-	GetURL(shortID string) (string, error)
-	SaveURL(id, shortID string) error
+	GetURL(ctx context.Context, shortID string) (string, error)
+	SaveURL(ctx context.Context, id, shortID string) error
 }
 
 func NewStore(conf config.Config, db *database.DB) (Store, error) {
@@ -57,7 +58,7 @@ func NewStore(conf config.Config, db *database.DB) (Store, error) {
 	return store, nil
 }
 
-func (ms memoryStore) GetURL(shortID string) (string, error) {
+func (ms memoryStore) GetURL(_ context.Context, shortID string) (string, error) {
 	url, ok := ms.data[shortID]
 	if !ok {
 		return "", fmt.Errorf("URL not found in data list")
@@ -65,15 +66,15 @@ func (ms memoryStore) GetURL(shortID string) (string, error) {
 	return url, nil
 }
 
-func (fs fileStore) GetURL(shortID string) (string, error) {
-	url, err := fs.memoryStore.GetURL(shortID)
+func (fs fileStore) GetURL(ctx context.Context, shortID string) (string, error) {
+	url, err := fs.memoryStore.GetURL(ctx, shortID)
 	if err != nil {
 		return "", err
 	}
 	return url, nil
 }
 
-func (ds databaseStore) GetURL(shortID string) (string, error) {
+func (ds databaseStore) GetURL(_ context.Context, shortID string) (string, error) {
 	url, err := ds.db.GetBasicURL(shortID)
 	switch {
 	case errors.Is(err, sql.ErrNoRows):
@@ -84,13 +85,13 @@ func (ds databaseStore) GetURL(shortID string) (string, error) {
 	return url, nil
 }
 
-func (ms memoryStore) SaveURL(id, shortID string) error {
+func (ms memoryStore) SaveURL(_ context.Context, id, shortID string) error {
 	ms.data[shortID] = id
 	return nil
 }
 
-func (fs fileStore) SaveURL(id, shortID string) error {
-	err := fs.memoryStore.SaveURL(id, shortID)
+func (fs fileStore) SaveURL(ctx context.Context, id, shortID string) error {
+	err := fs.memoryStore.SaveURL(ctx, id, shortID)
 	if err != nil {
 		return err
 	}
@@ -128,10 +129,10 @@ func (fs fileStore) SaveURL(id, shortID string) error {
 	return nil
 }
 
-func (ds databaseStore) SaveURL(id, shortID string) error {
+func (ds databaseStore) SaveURL(ctx context.Context, id, shortID string) error {
 	var pgError *pgconn.PgError
 
-	rows, err := ds.db.SaveURL(id, shortID)
+	rows, err := ds.db.SaveURL(ctx, id, shortID)
 	if errors.As(err, &pgError) && pgError.Code == pgerrcode.UniqueViolation {
 		return ErrDuplicate
 	}

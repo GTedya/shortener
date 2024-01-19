@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 
+	"go.uber.org/zap"
+
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	"github.com/golang-migrate/migrate/v4/source/iofs"
@@ -14,9 +16,10 @@ import (
 
 type DB struct {
 	pool *pgxpool.Pool
+	log  *zap.SugaredLogger
 }
 
-func NewDB(dsn string) (*DB, error) {
+func NewDB(dsn string, logger *zap.SugaredLogger) (*DB, error) {
 	if err := runMigrations(dsn); err != nil {
 		return nil, fmt.Errorf("failed to run DB migrations: %w", err)
 	}
@@ -24,7 +27,7 @@ func NewDB(dsn string) (*DB, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to create a connection pool: %w", err)
 	}
-	return &DB{pool: pool}, nil
+	return &DB{pool: pool, log: logger}, nil
 }
 
 //go:embed migrations/*.sql
@@ -78,20 +81,22 @@ func (db *DB) GetShortURL(id string) (string, error) {
 	return url, nil
 }
 
-func (db *DB) SaveURL(id, shortID string) (int64, error) {
-	ctx := context.TODO()
+func (db *DB) SaveURL(ctx context.Context, id, shortID string) (int64, error) {
 	tx, err := db.pool.Begin(ctx)
 	if err != nil {
 		return 0, fmt.Errorf("transaction error: %w", err)
 	}
+
+	defer func() {
+		err = tx.Commit(ctx)
+		if err != nil {
+			db.log.Error(fmt.Errorf("transaction commit error: %w", err))
+		}
+	}()
+
 	result, err := tx.Exec(ctx, "INSERT INTO urls (short_url, url) VALUES ($1, $2)", shortID, id)
 	if err != nil {
 		return 0, fmt.Errorf("saving url execution error: %w", err)
-	}
-
-	err = tx.Commit(ctx)
-	if err != nil {
-		return 0, fmt.Errorf("transaction commit error: %w", err)
 	}
 	rows := result.RowsAffected()
 	return rows, nil

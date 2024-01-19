@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -138,7 +139,7 @@ func Test_getURLByID(t *testing.T) {
 			}
 
 			h := handler{log: log, conf: conf, store: store}
-			err = h.store.SaveURL("http://localhost:8080/testID", "testID")
+			err = h.store.SaveURL(context.TODO(), "http://localhost:8080/testID", "testID")
 			if err != nil {
 				t.Log(err)
 			}

@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"math/rand"
 )
 
@@ -21,11 +22,12 @@ func generateURL(n int) string {
 	return string(b)
 }
 
-func createUniqueID(check func(shortID string) (string, error), urlLen int) string {
+func createUniqueID(ctx context.Context,
+	check func(ctx context.Context, shortID string) (string, error), urlLen int) string {
 	id := generateURL(urlLen)
 	uniqueID := false
 	for !uniqueID {
-		_, err := check(id)
+		_, err := check(ctx, id)
 		if err != nil {
 			id = generateURL(urlLen)
 			uniqueID = true
