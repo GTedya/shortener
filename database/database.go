@@ -11,6 +11,7 @@ import (
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	"github.com/golang-migrate/migrate/v4/source/iofs"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -100,4 +101,32 @@ func (db *DB) SaveURL(ctx context.Context, id, shortID string) (int64, error) {
 	}
 	rows := result.RowsAffected()
 	return rows, nil
+}
+
+func (db *DB) Batch(ctx context.Context, records map[string]string) error {
+	tx, err := db.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("transaction error: %w", err)
+	}
+
+	defer func() {
+		err = tx.Commit(ctx)
+		if err != nil {
+			db.log.Error(fmt.Errorf("transaction commit error: %w", err))
+		}
+	}()
+
+	b := &pgx.Batch{}
+
+	for id, subID := range records {
+		sqlStatement := "INSERT INTO urls (url,short_url) VALUES ($1, $2)"
+		b.Queue(sqlStatement, id, subID)
+	}
+
+	batchResults := tx.SendBatch(ctx, b)
+	err = batchResults.Close()
+	if err != nil {
+		return fmt.Errorf("batch closing error: %w", err)
+	}
+	return nil
 }

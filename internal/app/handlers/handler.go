@@ -30,16 +30,7 @@ const appJSON = "application/json"
 type Store interface {
 	GetURL(ctx context.Context, shortID string) (string, error)
 	SaveURL(ctx context.Context, id, shortID string) error
-}
-
-type reqMultipleURL struct {
-	CorrelationID string `json:"correlation_id"`
-	OriginalURL   string `json:"original_url"`
-}
-
-type resMultipleURL struct {
-	CorrelationID string `json:"correlation_id"`
-	ShortURL      string `json:"short_url"`
+	Batch(ctx context.Context, urls map[string]string) error
 }
 
 func NewHandler(logger *zap.SugaredLogger, conf config.Config, db *database.DB) (Handler, error) {
@@ -218,7 +209,7 @@ func (h *handler) Batch(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	var reqUrls []reqMultipleURL
+	var reqUrls []datastore.ReqMultipleURL
 	body, err := io.ReadAll(r.Body)
 
 	if err != nil {
@@ -229,7 +220,8 @@ func (h *handler) Batch(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	resUrls := make([]resMultipleURL, 0)
+	resUrls := make([]datastore.ResMultipleURL, 0)
+	urls := make(map[string]string)
 
 	err = json.Unmarshal(body, &reqUrls)
 	if err != nil {
@@ -243,16 +235,18 @@ func (h *handler) Batch(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 		shortID := createUniqueID(r.Context(), h.store.GetURL, urlLen)
-		res := resMultipleURL{CorrelationID: url.CorrelationID,
+		res := datastore.ResMultipleURL{CorrelationID: url.CorrelationID,
 			ShortURL: fmt.Sprintf("http://%s/%s", h.conf.Address, shortID)}
-		err = h.store.SaveURL(r.Context(), url.OriginalURL, shortID)
-		if err != nil {
-			h.log.Errorw("data saving error", err)
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
 
 		resUrls = append(resUrls, res)
+		urls[url.OriginalURL] = shortID
+	}
+
+	err = h.store.Batch(r.Context(), urls)
+	if err != nil {
+		h.log.Errorw("data saving error", err)
+		w.WriteHeader(http.StatusBadRequest)
+		return
 	}
 
 	marshal, err := json.Marshal(resUrls)
