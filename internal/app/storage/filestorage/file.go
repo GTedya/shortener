@@ -1,4 +1,4 @@
-package datastore
+package filestorage
 
 import (
 	"context"
@@ -6,27 +6,30 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/GTedya/shortener/internal/app/storage/inmemory"
 	"github.com/GTedya/shortener/internal/helpers"
 )
 
-type fileStore struct {
-	memoryStore
+const writingPermission = 0600
+
+type FileStore struct {
+	Memory inmemory.MemoryStore
 }
 
-func (fs *fileStore) GetURL(ctx context.Context, shortID string) (string, error) {
-	url, err := fs.memoryStore.GetURL(ctx, shortID)
+func (fs *FileStore) GetURL(ctx context.Context, shortID string) (string, error) {
+	url, err := fs.Memory.GetURL(ctx, shortID)
 	if err != nil {
 		return "", err
 	}
 	return url, nil
 }
 
-func (fs *fileStore) SaveURL(ctx context.Context, id, shortID string) error {
-	err := fs.memoryStore.SaveURL(ctx, id, shortID)
+func (fs *FileStore) SaveURL(ctx context.Context, id, shortID string) error {
+	err := fs.Memory.SaveURL(ctx, id, shortID)
 	if err != nil {
 		return fmt.Errorf("memory store error: %w", err)
 	}
-	filePath := fs.conf.FileStoragePath
+	filePath := fs.Memory.Conf.FileStoragePath
 	jsonFile := helpers.FileStorage{
 		UUID:        helpers.GenerateUUID(filePath),
 		ShortURL:    shortID,
@@ -39,16 +42,16 @@ func (fs *fileStore) SaveURL(ctx context.Context, id, shortID string) error {
 		return fmt.Errorf("file reading error: %w", err)
 	}
 
-	var storage []helpers.FileStorage
+	var fileStorage []helpers.FileStorage
 	if len(content) > 0 {
-		if err = json.Unmarshal(content, &storage); err != nil {
+		if err = json.Unmarshal(content, &fileStorage); err != nil {
 			return fmt.Errorf("json unmarshal error: %w", err)
 		}
 	}
 
-	storage = append(storage, jsonFile)
+	fileStorage = append(fileStorage, jsonFile)
 
-	encoded, err := json.MarshalIndent(storage, "", "  ")
+	encoded, err := json.MarshalIndent(fileStorage, "", "  ")
 	if err != nil {
 		return fmt.Errorf("json marshal error: %w", err)
 	}
@@ -60,22 +63,22 @@ func (fs *fileStore) SaveURL(ctx context.Context, id, shortID string) error {
 	return nil
 }
 
-func (fs *fileStore) Batch(ctx context.Context, urls map[string]string) error {
-	err := fs.memoryStore.Batch(ctx, urls)
+func (fs *FileStore) Batch(ctx context.Context, urls map[string]string) error {
+	err := fs.Memory.Batch(ctx, urls)
 	if err != nil {
-		return fmt.Errorf("memory store error: %w", err)
+		return fmt.Errorf("Memory store error: %w", err)
 	}
 
-	filePath := fs.conf.FileStoragePath
+	filePath := fs.Memory.Conf.FileStoragePath
 	content, err := os.ReadFile(filePath)
 	if err != nil && !os.IsNotExist(err) {
 		return fmt.Errorf("file reading error: %w", err)
 	}
 
-	storage := make([]helpers.FileStorage, 0)
+	fileStorage := make([]helpers.FileStorage, 0)
 
 	if len(content) > 0 {
-		if err = json.Unmarshal(content, &storage); err != nil {
+		if err = json.Unmarshal(content, &fileStorage); err != nil {
 			return fmt.Errorf("json unmarshal error: %w", err)
 		}
 	}
@@ -86,10 +89,10 @@ func (fs *fileStore) Batch(ctx context.Context, urls map[string]string) error {
 			ShortURL:    shortID,
 			OriginalURL: id,
 		}
-		storage = append(storage, jsonFile)
+		fileStorage = append(fileStorage, jsonFile)
 	}
 
-	encoded, err := json.MarshalIndent(storage, "", "  ")
+	encoded, err := json.MarshalIndent(fileStorage, "", "  ")
 	if err != nil {
 		return fmt.Errorf("json marshal error: %w", err)
 	}

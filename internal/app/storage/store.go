@@ -1,18 +1,16 @@
-package datastore
+package storage
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/GTedya/shortener/config"
 	"github.com/GTedya/shortener/database"
+	"github.com/GTedya/shortener/internal/app/storage/dbstorage"
+	"github.com/GTedya/shortener/internal/app/storage/filestorage"
+	"github.com/GTedya/shortener/internal/app/storage/inmemory"
 	"github.com/GTedya/shortener/internal/helpers"
 )
-
-const writingPermission = 0600
-
-var ErrDuplicate = errors.New("this url already exists")
 
 type ReqMultipleURL struct {
 	CorrelationID string `json:"correlation_id"`
@@ -37,20 +35,21 @@ type Store interface {
 
 func NewStore(conf config.Config, db *database.DB) (Store, error) {
 	var store Store
-	data := make(map[string]string)
-	store = &memoryStore{conf: conf, data: data}
-
 	if len(conf.DatabaseDSN) != 0 {
-		store = &databaseStore{db: db}
+		store = &dbstorage.DatabaseStore{DB: db}
 		return store, nil
 	}
 
+	data := make(map[string]string)
 	if len(conf.FileStoragePath) != 0 {
 		err := helpers.FileData(data, conf.FileStoragePath)
 		if err != nil {
 			return nil, fmt.Errorf("unable to get file data: %w", err)
 		}
-		store = &fileStore{memoryStore: memoryStore{conf: conf, data: data}}
+		store = &filestorage.FileStore{Memory: inmemory.MemoryStore{Conf: conf, Data: data}}
+		return store, nil
 	}
+
+	store = &inmemory.MemoryStore{Conf: conf, Data: data}
 	return store, nil
 }

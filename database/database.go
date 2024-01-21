@@ -64,18 +64,18 @@ func (db *DB) Ping(ctx context.Context) error {
 	return nil
 }
 
-func (db *DB) GetBasicURL(shortID string) (string, error) {
+func (db *DB) GetBasicURL(ctx context.Context, shortID string) (string, error) {
 	var url string
-	err := db.pool.QueryRow(context.TODO(), "SELECT url FROM urls WHERE short_url = $1", shortID).Scan(&url)
+	err := db.pool.QueryRow(ctx, "SELECT url FROM urls WHERE short_url = $1", shortID).Scan(&url)
 	if err != nil {
 		return "", fmt.Errorf("query error: %w", err)
 	}
 	return url, nil
 }
 
-func (db *DB) GetShortURL(id string) (string, error) {
+func (db *DB) GetShortURL(ctx context.Context, id string) (string, error) {
 	var url string
-	err := db.pool.QueryRow(context.TODO(), "SELECT short_url FROM urls WHERE url = $1", id).Scan(&url)
+	err := db.pool.QueryRow(ctx, "SELECT short_url FROM urls WHERE url = $1", id).Scan(&url)
 	if err != nil {
 		return "", fmt.Errorf("query error: %w", err)
 	}
@@ -85,13 +85,13 @@ func (db *DB) GetShortURL(id string) (string, error) {
 func (db *DB) SaveURL(ctx context.Context, id, shortID string) (int64, error) {
 	tx, err := db.pool.Begin(ctx)
 	if err != nil {
-		return 0, fmt.Errorf("transaction error: %w", err)
+		return 0, fmt.Errorf("transaction start error: %w", err)
 	}
 
 	defer func() {
-		err = tx.Commit(ctx)
-		if err != nil {
-			db.log.Error(fmt.Errorf("transaction commit error: %w", err))
+		err = tx.Rollback(ctx)
+		if err != nil && !errors.Is(err, pgx.ErrTxClosed) {
+			db.log.Error(fmt.Errorf("transaction rollback error: %w", err))
 		}
 	}()
 
@@ -99,6 +99,12 @@ func (db *DB) SaveURL(ctx context.Context, id, shortID string) (int64, error) {
 	if err != nil {
 		return 0, fmt.Errorf("saving url execution error: %w", err)
 	}
+
+	err = tx.Commit(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("transaction commit error: %w", err)
+	}
+
 	rows := result.RowsAffected()
 	return rows, nil
 }
@@ -110,9 +116,9 @@ func (db *DB) Batch(ctx context.Context, records map[string]string) error {
 	}
 
 	defer func() {
-		err = tx.Commit(ctx)
-		if err != nil {
-			db.log.Error(fmt.Errorf("transaction commit error: %w", err))
+		err = tx.Rollback(ctx)
+		if err != nil && !errors.Is(err, pgx.ErrTxClosed) {
+			db.log.Error(fmt.Errorf("transaction rollback error: %w", err))
 		}
 	}()
 
@@ -128,5 +134,11 @@ func (db *DB) Batch(ctx context.Context, records map[string]string) error {
 	if err != nil {
 		return fmt.Errorf("batch closing error: %w", err)
 	}
+
+	err = tx.Commit(ctx)
+	if err != nil {
+		return fmt.Errorf("transaction commit error: %w", err)
+	}
+
 	return nil
 }

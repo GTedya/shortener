@@ -1,4 +1,4 @@
-package datastore
+package dbstorage
 
 import (
 	"context"
@@ -7,17 +7,18 @@ import (
 	"fmt"
 
 	"github.com/GTedya/shortener/database"
-
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5/pgconn"
 )
 
-type databaseStore struct {
-	db *database.DB
+var ErrDuplicate = errors.New("this url already exists")
+
+type DatabaseStore struct {
+	DB *database.DB
 }
 
-func (ds *databaseStore) GetURL(_ context.Context, shortID string) (string, error) {
-	url, err := ds.db.GetBasicURL(shortID)
+func (ds *DatabaseStore) GetURL(ctx context.Context, shortID string) (string, error) {
+	url, err := ds.DB.GetBasicURL(ctx, shortID)
 	switch {
 	case errors.Is(err, sql.ErrNoRows):
 		return "", fmt.Errorf("URL not found in database: %w", err)
@@ -27,10 +28,10 @@ func (ds *databaseStore) GetURL(_ context.Context, shortID string) (string, erro
 	return url, nil
 }
 
-func (ds *databaseStore) SaveURL(ctx context.Context, id, shortID string) error {
+func (ds *DatabaseStore) SaveURL(ctx context.Context, id, shortID string) error {
 	var pgError *pgconn.PgError
 
-	rows, err := ds.db.SaveURL(ctx, id, shortID)
+	rows, err := ds.DB.SaveURL(ctx, id, shortID)
 	if errors.As(err, &pgError) && pgError.Code == pgerrcode.UniqueViolation {
 		return ErrDuplicate
 	}
@@ -43,8 +44,8 @@ func (ds *databaseStore) SaveURL(ctx context.Context, id, shortID string) error 
 	return nil
 }
 
-func (ds *databaseStore) Batch(ctx context.Context, urls map[string]string) error {
-	err := ds.db.Batch(ctx, urls)
+func (ds *DatabaseStore) Batch(ctx context.Context, urls map[string]string) error {
+	err := ds.DB.Batch(ctx, urls)
 	if err != nil {
 		return fmt.Errorf("database batch error: %w", err)
 	}

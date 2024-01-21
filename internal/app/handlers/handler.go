@@ -5,13 +5,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/GTedya/shortener/internal/app/storage/dbstorage"
 	"io"
 	"net/http"
 
 	"github.com/GTedya/shortener/config"
 	"github.com/GTedya/shortener/database"
-	"github.com/GTedya/shortener/internal/app/datastore"
-
+	"github.com/GTedya/shortener/internal/app/storage"
 	"github.com/go-chi/chi/v5"
 	"go.uber.org/zap"
 )
@@ -34,7 +34,7 @@ type Store interface {
 }
 
 func NewHandler(logger *zap.SugaredLogger, conf config.Config, db *database.DB) (Handler, error) {
-	store, err := datastore.NewStore(conf, db)
+	store, err := storage.NewStore(conf, db)
 	if err != nil {
 		return nil, fmt.Errorf("store creation error: %w", err)
 	}
@@ -70,9 +70,9 @@ func (h *handler) CreateURL(w http.ResponseWriter, r *http.Request) {
 
 	err = h.store.SaveURL(r.Context(), id, shortID)
 
-	if errors.Is(err, datastore.ErrDuplicate) {
+	if errors.Is(err, dbstorage.ErrDuplicate) {
 		w.WriteHeader(http.StatusConflict)
-		shortID, err = h.db.GetShortURL(id)
+		shortID, err = h.db.GetShortURL(r.Context(), id)
 		if err != nil {
 			h.log.Errorw("short url getting error", err)
 			w.WriteHeader(http.StatusBadRequest)
@@ -148,9 +148,9 @@ func (h *handler) URLByJSON(w http.ResponseWriter, r *http.Request) {
 
 	err = h.store.SaveURL(r.Context(), id, shortID)
 
-	if errors.Is(err, datastore.ErrDuplicate) {
+	if errors.Is(err, dbstorage.ErrDuplicate) {
 		w.WriteHeader(http.StatusConflict)
-		shortID, err = h.db.GetShortURL(id)
+		shortID, err = h.db.GetShortURL(r.Context(), id)
 		if err != nil {
 			h.log.Errorw("short url getting error", err)
 			w.WriteHeader(http.StatusBadRequest)
@@ -209,7 +209,7 @@ func (h *handler) Batch(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	var reqUrls []datastore.ReqMultipleURL
+	var reqUrls []storage.ReqMultipleURL
 	body, err := io.ReadAll(r.Body)
 
 	if err != nil {
@@ -220,7 +220,7 @@ func (h *handler) Batch(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	resUrls := make([]datastore.ResMultipleURL, 0)
+	resUrls := make([]storage.ResMultipleURL, 0)
 	urls := make(map[string]string)
 
 	err = json.Unmarshal(body, &reqUrls)
@@ -235,7 +235,7 @@ func (h *handler) Batch(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 		shortID := createUniqueID(r.Context(), h.store.GetURL, urlLen)
-		res := datastore.ResMultipleURL{CorrelationID: url.CorrelationID,
+		res := storage.ResMultipleURL{CorrelationID: url.CorrelationID,
 			ShortURL: fmt.Sprintf("http://%s/%s", h.conf.Address, shortID)}
 
 		resUrls = append(resUrls, res)

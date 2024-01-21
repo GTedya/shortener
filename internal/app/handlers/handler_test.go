@@ -3,16 +3,17 @@ package handlers
 import (
 	"context"
 	"fmt"
+	"github.com/GTedya/shortener/internal/app/storage"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"go.uber.org/zap"
 
 	"github.com/GTedya/shortener/config"
-	"github.com/GTedya/shortener/internal/app/datastore"
 	"github.com/GTedya/shortener/internal/app/logger"
 
 	"github.com/GTedya/shortener/database"
@@ -63,7 +64,7 @@ func Test_createURL(t *testing.T) {
 			log := logger.CreateLogger()
 
 			db := &database.DB{}
-			store, err := datastore.NewStore(conf, db)
+			store, err := storage.NewStore(conf, db)
 			if err != nil {
 				t.Log(err)
 			}
@@ -133,13 +134,17 @@ func Test_getURLByID(t *testing.T) {
 			log := &zap.SugaredLogger{}
 
 			db := &database.DB{}
-			store, err := datastore.NewStore(conf, db)
+			store, err := storage.NewStore(conf, db)
 			if err != nil {
 				t.Log(err)
 			}
 
+			ctx := context.TODO()
+			ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
+			defer cancel()
+
 			h := handler{log: log, conf: conf, store: store}
-			err = h.store.SaveURL(context.TODO(), "http://localhost:8080/testID", "testID")
+			err = h.store.SaveURL(ctx, "http://localhost:8080/testID", "testID")
 			if err != nil {
 				t.Log(err)
 			}
@@ -173,7 +178,7 @@ func TestJsonHandler(t *testing.T) {
 	db := &database.DB{}
 	conf := config.Config{Address: "localhost:8080", URL: "short"}
 	log := logger.CreateLogger()
-	store, err := datastore.NewStore(conf, db)
+	store, err := storage.NewStore(conf, db)
 	if err != nil {
 		t.Log(err)
 	}
