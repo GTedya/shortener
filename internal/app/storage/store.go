@@ -17,11 +17,6 @@ type ReqMultipleURL struct {
 	OriginalURL   string `json:"original_url"`
 }
 
-type MultipleURL struct {
-	OriginalURL string
-	ShortURL    string
-}
-
 type ResMultipleURL struct {
 	CorrelationID string `json:"correlation_id"`
 	ShortURL      string `json:"short_url"`
