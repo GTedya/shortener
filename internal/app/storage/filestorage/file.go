@@ -19,7 +19,7 @@ type FileStore struct {
 func (fs *FileStore) GetURL(ctx context.Context, shortID string) (string, error) {
 	url, err := fs.Memory.GetURL(ctx, shortID)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("URL getting error: %w", err)
 	}
 	return url, nil
 }
@@ -66,7 +66,7 @@ func (fs *FileStore) SaveURL(ctx context.Context, id, shortID string) error {
 func (fs *FileStore) Batch(ctx context.Context, urls map[string]string) error {
 	err := fs.Memory.Batch(ctx, urls)
 	if err != nil {
-		return fmt.Errorf("Memory store error: %w", err)
+		return fmt.Errorf("memory store error: %w", err)
 	}
 
 	filePath := fs.Memory.Conf.FileStoragePath

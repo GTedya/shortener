@@ -3,7 +3,6 @@ package handlers
 import (
 	"context"
 	"fmt"
-	"github.com/GTedya/shortener/internal/app/storage"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -14,9 +13,10 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/GTedya/shortener/config"
-	"github.com/GTedya/shortener/internal/app/logger"
-
 	"github.com/GTedya/shortener/database"
+	"github.com/GTedya/shortener/internal/app/logger"
+	"github.com/GTedya/shortener/internal/app/storage"
+
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
