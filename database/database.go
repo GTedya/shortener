@@ -89,20 +89,20 @@ func (db *DB) SaveURL(ctx context.Context, id, shortID string) (int64, error) {
 	}
 
 	defer func() {
-		err = tx.Rollback(ctx)
-		if err != nil && !errors.Is(err, pgx.ErrTxClosed) {
-			db.log.Error(fmt.Errorf("transaction rollback error: %w", err))
+		if err != nil {
+			if txErr := tx.Rollback(ctx); txErr != nil {
+				db.log.Error("transaction rollback error: ", txErr)
+				return
+			}
+		}
+		if txErr := tx.Commit(ctx); txErr != nil {
+			db.log.Errorw("transaction commit error", "error", txErr)
 		}
 	}()
 
 	result, err := tx.Exec(ctx, "INSERT INTO urls (short_url, url) VALUES ($1, $2)", shortID, id)
 	if err != nil {
 		return 0, fmt.Errorf("saving url execution error: %w", err)
-	}
-
-	err = tx.Commit(ctx)
-	if err != nil {
-		return 0, fmt.Errorf("transaction commit error: %w", err)
 	}
 
 	rows := result.RowsAffected()
@@ -116,9 +116,14 @@ func (db *DB) Batch(ctx context.Context, records map[string]string) error {
 	}
 
 	defer func() {
-		err = tx.Rollback(ctx)
-		if err != nil && !errors.Is(err, pgx.ErrTxClosed) {
-			db.log.Error(fmt.Errorf("transaction rollback error: %w", err))
+		if err != nil {
+			if txErr := tx.Rollback(ctx); txErr != nil {
+				db.log.Error("transaction rollback error: ", txErr)
+				return
+			}
+		}
+		if txErr := tx.Commit(ctx); txErr != nil {
+			db.log.Errorw("transaction commit error", "error", txErr)
 		}
 	}()
 
@@ -133,11 +138,6 @@ func (db *DB) Batch(ctx context.Context, records map[string]string) error {
 	err = batchResults.Close()
 	if err != nil {
 		return fmt.Errorf("batch closing error: %w", err)
-	}
-
-	err = tx.Commit(ctx)
-	if err != nil {
-		return fmt.Errorf("transaction commit error: %w", err)
 	}
 
 	return nil
