@@ -1,18 +1,22 @@
 package handlers
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"go.uber.org/zap"
 
 	"github.com/GTedya/shortener/config"
-	"github.com/GTedya/shortener/internal/app/datastore"
+	"github.com/GTedya/shortener/database"
 	"github.com/GTedya/shortener/internal/app/logger"
+	"github.com/GTedya/shortener/internal/app/storage"
+
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -58,7 +62,9 @@ func Test_createURL(t *testing.T) {
 
 			w := httptest.NewRecorder()
 			log := logger.CreateLogger()
-			store, err := datastore.NewStore(conf)
+
+			db := &database.DB{}
+			store, err := storage.NewStore(conf, db)
 			if err != nil {
 				t.Log(err)
 			}
@@ -126,13 +132,19 @@ func Test_getURLByID(t *testing.T) {
 			r := chi.NewRouter()
 			conf := config.Config{Address: "localhost:8080", URL: "short"}
 			log := &zap.SugaredLogger{}
-			store, err := datastore.NewStore(conf)
+
+			db := &database.DB{}
+			store, err := storage.NewStore(conf, db)
 			if err != nil {
 				t.Log(err)
 			}
 
+			ctx := context.TODO()
+			ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
+			defer cancel()
+
 			h := handler{log: log, conf: conf, store: store}
-			err = h.store.SaveURL("http://localhost:8080/testID", "testID")
+			err = h.store.SaveURL(ctx, "http://localhost:8080/testID", "testID")
 			if err != nil {
 				t.Log(err)
 			}
@@ -163,9 +175,10 @@ func Test_getURLByID(t *testing.T) {
 }
 
 func TestJsonHandler(t *testing.T) {
+	db := &database.DB{}
 	conf := config.Config{Address: "localhost:8080", URL: "short"}
 	log := logger.CreateLogger()
-	store, err := datastore.NewStore(conf)
+	store, err := storage.NewStore(conf, db)
 	if err != nil {
 		t.Log(err)
 	}
