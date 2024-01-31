@@ -7,6 +7,8 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
+var BaseURL = "http://localhost:8080"
+
 func (h *handler) getURLByID(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 
@@ -42,7 +44,7 @@ func (h *handler) userUrls(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	for _, url := range urls {
-		url.ShortURL = h.conf.URL + url.ShortURL
+		url.ShortURL = BaseURL + url.ShortURL
 	}
 
 	marshal, err := json.Marshal(urls)
