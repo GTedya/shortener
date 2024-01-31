@@ -41,6 +41,10 @@ func (h *handler) userUrls(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 		return
 	}
+	for _, url := range urls {
+		url.ShortURL = h.conf.URL + url.ShortURL
+	}
+
 	marshal, err := json.Marshal(urls)
 	if err != nil {
 		h.log.Errorw("Json marshalling error", err)
