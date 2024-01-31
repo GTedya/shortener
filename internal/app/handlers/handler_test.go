@@ -70,7 +70,7 @@ func Test_createURL(t *testing.T) {
 			}
 
 			h := &handler{log: log, conf: conf, store: store}
-			h.CreateURL(w, request)
+			h.createURL(w, request)
 
 			res := w.Result()
 
@@ -150,7 +150,7 @@ func Test_getURLByID(t *testing.T) {
 			}
 
 			r.Get("/{id:[a-zA-Z0-9]+}", func(writer http.ResponseWriter, request *http.Request) {
-				h.GetURLByID(writer, request)
+				h.getURLByID(writer, request)
 			})
 
 			req := httptest.NewRequest(http.MethodGet, "/testID", nil)
@@ -219,7 +219,7 @@ func TestJsonHandler(t *testing.T) {
 
 			w := httptest.NewRecorder()
 
-			h.URLByJSON(w, request)
+			h.urlByJSON(w, request)
 			assert.Equal(t, test.expectedStatus, w.Code)
 		})
 	}

@@ -8,6 +8,9 @@ import (
 
 	"go.uber.org/zap"
 
+	"github.com/GTedya/shortener/internal/app/middlewares"
+	"github.com/GTedya/shortener/internal/helpers"
+
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	"github.com/golang-migrate/migrate/v4/source/iofs"
@@ -100,7 +103,8 @@ func (db *DB) SaveURL(ctx context.Context, id, shortID string) (int64, error) {
 		}
 	}()
 
-	result, err := tx.Exec(ctx, "INSERT INTO urls (short_url, url) VALUES ($1, $2)", shortID, id)
+	result, err := tx.Exec(ctx, "INSERT INTO urls (short_url, url, user_token) VALUES ($1, $2, $3)",
+		shortID, id, ctx.Value(middlewares.ContextKey("token")).(string))
 	if err != nil {
 		return 0, fmt.Errorf("saving url execution error: %w", err)
 	}
@@ -141,4 +145,28 @@ func (db *DB) Batch(ctx context.Context, records map[string]string) error {
 	}
 
 	return nil
+}
+
+func (db *DB) UserURLS(ctx context.Context, token string) ([]helpers.UserURL, error) {
+	rows, err := db.pool.Query(ctx, "SELECT short_url, url FROM urls WHERE user_token = $1", token)
+	if err != nil {
+		return nil, fmt.Errorf("query error: %w", err)
+	}
+	var urls []helpers.UserURL
+
+	for rows.Next() {
+		var url helpers.UserURL
+		if err = rows.Scan(&url.ShortURL, &url.OriginalURL); err != nil {
+			return nil, fmt.Errorf("rows scan error: %w", err)
+		}
+		urls = append(urls, url)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("error in query all urls: %w", err)
+	}
+
+	defer rows.Close()
+
+	return urls, nil
 }
