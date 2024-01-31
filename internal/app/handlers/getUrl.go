@@ -7,7 +7,7 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-var BaseURL = "http://localhost:8080"
+var BaseURL = "http://localhost:8080/"
 
 func (h *handler) getURLByID(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
