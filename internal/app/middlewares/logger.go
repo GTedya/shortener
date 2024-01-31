@@ -40,8 +40,8 @@ func (r *loggingResponseWriter) WriteHeader(statusCode int) {
 }
 
 func (m Middleware) LogHandle(next http.Handler) http.Handler {
-	start := time.Now()
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
 		resData := &responseData{
 			status: 0,
 			size:   0,

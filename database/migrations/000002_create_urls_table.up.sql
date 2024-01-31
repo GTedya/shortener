@@ -7,6 +7,4 @@ CREATE TABLE IF NOT EXISTS urls
     url       VARCHAR(200) UNIQUE NOT NULL
 );
 
-CREATE INDEX short_url ON urls (short_url);
-
 COMMIT
