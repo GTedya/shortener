@@ -23,6 +23,8 @@ type DB struct {
 	log  *zap.SugaredLogger
 }
 
+var BaseURL = "http://localhost:8080/"
+
 func NewDB(dsn string, logger *zap.SugaredLogger) (*DB, error) {
 	if err := runMigrations(dsn); err != nil {
 		return nil, fmt.Errorf("failed to run DB migrations: %w", err)
@@ -159,6 +161,7 @@ func (db *DB) UserURLS(ctx context.Context, token string) ([]helpers.UserURL, er
 		if err = rows.Scan(&url.ShortURL, &url.OriginalURL); err != nil {
 			return nil, fmt.Errorf("rows scan error: %w", err)
 		}
+		url.ShortURL = BaseURL + url.ShortURL
 		urls = append(urls, url)
 	}
 
