@@ -2,15 +2,22 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+
+	"github.com/GTedya/shortener/internal/app/storage/dbstorage"
 )
 
 func (h *handler) getURLByID(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 
 	shortenURL, err := h.store.GetURL(r.Context(), id)
+	if err != nil && errors.Is(err, dbstorage.ErrDeletedURL) {
+		w.WriteHeader(http.StatusGone)
+		return
+	}
 	if err != nil {
 		h.log.Errorw("ID not found", id, err)
 		w.WriteHeader(http.StatusBadRequest)

@@ -1,0 +1,5 @@
+START TRANSACTION;
+
+ALTER TABLE urls ADD COLUMN is_deleted bool;
+
+COMMIT

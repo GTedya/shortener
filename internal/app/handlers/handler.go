@@ -51,4 +51,6 @@ func (h *handler) Register(router *chi.Mux, middleware middlewares.Middleware) {
 	router.Post("/api/shorten/batch", h.batch)
 
 	router.With(middleware.AuthCheck).Get("/api/user/urls", h.userUrls)
+
+	router.With(middleware.AuthCheck).Delete("/api/user/urls", h.deleteUrls)
 }
