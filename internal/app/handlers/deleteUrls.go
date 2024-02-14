@@ -14,11 +14,9 @@ func (h *handler) deleteUrls(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	w.Header().Add(contentType, appJSON)
 
-	var shortURLS []string
+	var shortURLs []string
 	body, err := io.ReadAll(r.Body)
-
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
@@ -27,24 +25,24 @@ func (h *handler) deleteUrls(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	err = json.Unmarshal(body, &shortURLS)
+	err = json.Unmarshal(body, &shortURLs)
 	if err != nil {
-		h.log.Errorw("Json unmarshalling error", err)
-		w.WriteHeader(http.StatusInternalServerError)
+		h.log.Errorw("JSON unmarshalling error", err)
 		return
 	}
-	ctx, cancel := context.WithCancel(r.Context())
-	defer cancel()
-	gen := generator(ctx, shortURLS)
+	w.WriteHeader(http.StatusAccepted)
+
+	ctx := r.Context()
+	gen := generator(ctx, shortURLs)
 	out := make(chan string)
 
 	go func() {
 		defer close(out)
+
 		for url := range gen {
-			isUser, err := h.db.IsUserURL(ctx, token.Value, url)
-			if err != nil {
+			isUser, er := h.db.IsUserURL(ctx, token.Value, url)
+			if er != nil {
 				h.log.Errorw("Is user error", err)
-				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
 			if isUser {
@@ -53,18 +51,16 @@ func (h *handler) deleteUrls(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
-	err = h.db.DeleteURLS(r.Context(), out)
+	err = h.db.DeleteURLS(ctx, out)
 	if err != nil {
 		h.log.Errorw("User deleting error", err)
-		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	w.WriteHeader(http.StatusAccepted)
+
 }
 
 func generator(ctx context.Context, input []string) chan string {
 	inputCh := make(chan string)
-
 	go func() {
 		defer close(inputCh)
 
@@ -76,6 +72,5 @@ func generator(ctx context.Context, input []string) chan string {
 			}
 		}
 	}()
-
 	return inputCh
 }

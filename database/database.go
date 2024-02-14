@@ -7,8 +7,6 @@ import (
 	"errors"
 	"fmt"
 
-	"go.uber.org/zap"
-
 	"github.com/GTedya/shortener/internal/app/middlewares"
 	"github.com/GTedya/shortener/internal/helpers"
 
@@ -17,6 +15,8 @@ import (
 	"github.com/golang-migrate/migrate/v4/source/iofs"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"go.uber.org/zap"
+	"sync"
 )
 
 type DB struct {
@@ -74,17 +74,17 @@ func (db *DB) Ping(ctx context.Context) error {
 
 func (db *DB) GetBasicURL(ctx context.Context, shortID string) (string, bool, error) {
 	var url string
-	var isDeleted sql.NullBool
+	var isDeleted bool
 
 	err := db.pool.QueryRow(ctx, "SELECT url, is_deleted FROM urls WHERE short_url = $1", shortID).Scan(&url, &isDeleted)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return "", false, fmt.Errorf("record not found")
+		}
 		return "", false, fmt.Errorf(ErrQuery, err)
 	}
-	if isDeleted.Bool {
-		return url, true, nil
-	}
 
-	return url, false, nil
+	return url, isDeleted, nil
 }
 
 func (db *DB) GetShortURL(ctx context.Context, id string) (string, error) {
@@ -189,31 +189,46 @@ func (db *DB) DeleteURLS(ctx context.Context, shortURLS chan string) error {
 		return fmt.Errorf("transaction error: %w", err)
 	}
 
-	defer func() {
-		if err != nil {
-			if txErr := tx.Rollback(ctx); txErr != nil {
-				db.log.Error("transaction rollback error: ", txErr)
-				return
+	b := &pgx.Batch{}
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+
+	go func() {
+		defer wg.Done()
+		for {
+			url, ok := <-shortURLS
+			if !ok {
+				if b.Len() != 0 {
+					batchResults := tx.SendBatch(ctx, b)
+					er := batchResults.Close()
+					if er != nil {
+						db.log.Errorw("batch closing error", "error", er)
+						return
+					}
+				}
+				break
 			}
-		}
-		if txErr := tx.Commit(ctx); txErr != nil {
-			db.log.Errorw("transaction commit error", "error", txErr)
+			sqlStatement := "UPDATE urls SET is_deleted = true WHERE short_url=$1"
+			b.Queue(sqlStatement, url)
+			if b.Len() >= 10 {
+				batchResults := tx.SendBatch(ctx, b)
+				er := batchResults.Close()
+				if er != nil {
+					db.log.Errorw("batch closing error", "error", er)
+					return
+				}
+				b = &pgx.Batch{}
+			}
+
 		}
 	}()
 
-	b := &pgx.Batch{}
-
-	for url := range shortURLS {
-		sqlStatement := "UPDATE urls SET is_deleted=true WHERE short_url=$1"
-		b.Queue(sqlStatement, url)
-	}
-
-	batchResults := tx.SendBatch(ctx, b)
-	err = batchResults.Close()
+	wg.Wait()
+	err = tx.Commit(ctx)
 	if err != nil {
-		return fmt.Errorf("batch closing error: %w", err)
+		return fmt.Errorf("transaction commit error: %w", err)
 	}
-
 	return nil
 }
 
