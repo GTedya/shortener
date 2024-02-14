@@ -6,6 +6,7 @@ import (
 	"embed"
 	"errors"
 	"fmt"
+	"sync"
 
 	"github.com/GTedya/shortener/internal/app/middlewares"
 	"github.com/GTedya/shortener/internal/helpers"
@@ -15,8 +16,8 @@ import (
 	"github.com/golang-migrate/migrate/v4/source/iofs"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+
 	"go.uber.org/zap"
-	"sync"
 )
 
 type DB struct {
@@ -27,6 +28,8 @@ type DB struct {
 var BaseURL = "http://localhost:8080/"
 
 const ErrQuery = "query error: %w"
+const ErrCommitTransaction = "transaction commit error"
+const DeleteBuffer = 10
 
 func NewDB(dsn string, logger *zap.SugaredLogger) (*DB, error) {
 	if err := runMigrations(dsn); err != nil {
@@ -110,7 +113,7 @@ func (db *DB) SaveURL(ctx context.Context, id, shortID string) (int64, error) {
 			}
 		}
 		if txErr := tx.Commit(ctx); txErr != nil {
-			db.log.Errorw("transaction commit error", "error", txErr)
+			db.log.Errorw(ErrCommitTransaction, "error", txErr)
 		}
 	}()
 
@@ -138,7 +141,7 @@ func (db *DB) Batch(ctx context.Context, records map[string]string) error {
 			}
 		}
 		if txErr := tx.Commit(ctx); txErr != nil {
-			db.log.Errorw("transaction commit error", "error", txErr)
+			db.log.Errorw(ErrCommitTransaction, "err", txErr)
 		}
 	}()
 
@@ -186,7 +189,7 @@ func (db *DB) UserURLS(ctx context.Context, token string) ([]helpers.UserURL, er
 func (db *DB) DeleteURLS(ctx context.Context, shortURLS chan string) error {
 	tx, err := db.pool.Begin(ctx)
 	if err != nil {
-		return fmt.Errorf("transaction error: %w", err)
+		return fmt.Errorf("transaction err: %w", err)
 	}
 
 	b := &pgx.Batch{}
@@ -211,7 +214,7 @@ func (db *DB) DeleteURLS(ctx context.Context, shortURLS chan string) error {
 			}
 			sqlStatement := "UPDATE urls SET is_deleted = true WHERE short_url=$1"
 			b.Queue(sqlStatement, url)
-			if b.Len() >= 10 {
+			if b.Len() >= DeleteBuffer {
 				batchResults := tx.SendBatch(ctx, b)
 				er := batchResults.Close()
 				if er != nil {
@@ -220,14 +223,13 @@ func (db *DB) DeleteURLS(ctx context.Context, shortURLS chan string) error {
 				}
 				b = &pgx.Batch{}
 			}
-
 		}
 	}()
 
 	wg.Wait()
 	err = tx.Commit(ctx)
 	if err != nil {
-		return fmt.Errorf("transaction commit error: %w", err)
+		return fmt.Errorf("%s: %w", ErrCommitTransaction, err)
 	}
 	return nil
 }

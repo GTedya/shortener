@@ -56,7 +56,6 @@ func (h *handler) deleteUrls(w http.ResponseWriter, r *http.Request) {
 		h.log.Errorw("User deleting error", err)
 		return
 	}
-
 }
 
 func generator(ctx context.Context, input []string) chan string {
