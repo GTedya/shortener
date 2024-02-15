@@ -193,8 +193,8 @@ func (db *DB) DeleteURLS(ctx context.Context, wg *sync.WaitGroup, shortURLS chan
 	}
 
 	b := &pgx.Batch{}
-	wg.Add(1)
 
+	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		for {
@@ -228,10 +228,6 @@ func (db *DB) DeleteURLS(ctx context.Context, wg *sync.WaitGroup, shortURLS chan
 		}
 	}()
 
-	//err = tx.Commit(ctx)
-	//if err != nil {
-	//	return fmt.Errorf("%s: %w", ErrCommitTransaction, err)
-	//}
 	return nil
 }
 

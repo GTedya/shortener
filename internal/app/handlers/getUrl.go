@@ -57,7 +57,6 @@ func (h *handler) userUrls(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
-	h.log.Info(marshal)
 
 	_, err = w.Write(marshal)
 	if err != nil {

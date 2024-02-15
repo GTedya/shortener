@@ -55,7 +55,6 @@ func (h *handler) createURL(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusCreated)
-	h.log.Info(shortID)
 
 	if _, err = w.Write([]byte(fmt.Sprintf("%s/%s", h.conf.URL, shortID))); err != nil {
 		h.log.Error(errResponseWrite)
