@@ -207,6 +207,10 @@ func (db *DB) DeleteURLS(ctx context.Context, wg *sync.WaitGroup, shortURLS chan
 						db.log.Errorw("batch closing error", "error", er)
 						return
 					}
+					er = tx.Commit(ctx)
+					if er != nil {
+						db.log.Error(fmt.Errorf("%s: %w", ErrCommitTransaction, err))
+					}
 				}
 				break
 			}
@@ -224,10 +228,10 @@ func (db *DB) DeleteURLS(ctx context.Context, wg *sync.WaitGroup, shortURLS chan
 		}
 	}()
 
-	err = tx.Commit(ctx)
-	if err != nil {
-		return fmt.Errorf("%s: %w", ErrCommitTransaction, err)
-	}
+	//err = tx.Commit(ctx)
+	//if err != nil {
+	//	return fmt.Errorf("%s: %w", ErrCommitTransaction, err)
+	//}
 	return nil
 }
 
