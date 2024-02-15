@@ -162,7 +162,7 @@ func (db *DB) Batch(ctx context.Context, records map[string]string) error {
 }
 
 func (db *DB) UserURLS(ctx context.Context, token string) ([]helpers.UserURL, error) {
-	rows, err := db.pool.Query(ctx, "SELECT short_url, url FROM urls WHERE user_token = $1", token)
+	rows, err := db.pool.Query(ctx, "SELECT short_url, url FROM urls WHERE user_token = $1 AND is_deleted=false", token)
 	if err != nil {
 		return nil, fmt.Errorf(ErrQuery, err)
 	}
@@ -186,15 +186,13 @@ func (db *DB) UserURLS(ctx context.Context, token string) ([]helpers.UserURL, er
 	return urls, nil
 }
 
-func (db *DB) DeleteURLS(ctx context.Context, shortURLS chan string) error {
+func (db *DB) DeleteURLS(ctx context.Context, wg *sync.WaitGroup, shortURLS chan string) error {
 	tx, err := db.pool.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("transaction err: %w", err)
 	}
 
 	b := &pgx.Batch{}
-
-	var wg sync.WaitGroup
 	wg.Add(1)
 
 	go func() {
@@ -226,7 +224,6 @@ func (db *DB) DeleteURLS(ctx context.Context, shortURLS chan string) error {
 		}
 	}()
 
-	wg.Wait()
 	err = tx.Commit(ctx)
 	if err != nil {
 		return fmt.Errorf("%s: %w", ErrCommitTransaction, err)

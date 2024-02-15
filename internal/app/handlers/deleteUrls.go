@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"sync"
 )
 
 func (h *handler) deleteUrls(w http.ResponseWriter, r *http.Request) {
@@ -35,6 +36,7 @@ func (h *handler) deleteUrls(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	gen := generator(ctx, shortURLs)
 	out := make(chan string)
+	var wg sync.WaitGroup
 
 	go func() {
 		defer close(out)
@@ -42,7 +44,7 @@ func (h *handler) deleteUrls(w http.ResponseWriter, r *http.Request) {
 		for url := range gen {
 			isUser, er := h.db.IsUserURL(ctx, token.Value, url)
 			if er != nil {
-				h.log.Errorw("Is user error", err)
+				h.log.Errorw("Is user error", er)
 				return
 			}
 			if isUser {
@@ -51,11 +53,13 @@ func (h *handler) deleteUrls(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
-	err = h.db.DeleteURLS(ctx, out)
+	err = h.db.DeleteURLS(ctx, &wg, out)
 	if err != nil {
 		h.log.Errorw("User deleting error", err)
 		return
 	}
+
+	wg.Wait()
 }
 
 func generator(ctx context.Context, input []string) chan string {
