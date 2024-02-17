@@ -15,24 +15,6 @@ var errResponseWrite = errors.New("data writing error")
 var errJSONMarshal = errors.New("json marshalling error")
 
 func (h *handler) createURL(w http.ResponseWriter, r *http.Request) {
-	defer func() {
-		token, err := r.Cookie("token")
-		if err != nil {
-			h.log.Errorw("token receiving error", err)
-			return
-		}
-		w.Header().Add(contentType, appJSON)
-
-		urls, err := h.db.UserURLS(r.Context(), token.Value)
-		if err != nil {
-			h.log.Errorw("URL getting error", err)
-			return
-		}
-		if len(urls) == 0 {
-			return
-		}
-		h.log.Debug(urls)
-	}()
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
