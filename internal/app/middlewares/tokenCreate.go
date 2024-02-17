@@ -18,7 +18,7 @@ type ContextKey string
 const (
 	TokenContextKey ContextKey = "token"
 	SecretKey                  = "some_key"
-	TokenExp                   = 300 * time.Millisecond
+	TokenExp                   = 30 * time.Millisecond
 	tokenCookie                = "token"
 )
 
