@@ -6,7 +6,6 @@ import (
 	"embed"
 	"errors"
 	"fmt"
-	"sync"
 
 	"github.com/GTedya/shortener/internal/app/middlewares"
 	"github.com/GTedya/shortener/internal/helpers"
@@ -186,7 +185,7 @@ func (db *DB) UserURLS(ctx context.Context, token string) ([]helpers.UserURL, er
 	return urls, nil
 }
 
-func (db *DB) DeleteURLS(ctx context.Context, wg *sync.WaitGroup, shortURLS chan string) error {
+func (db *DB) DeleteURLS(ctx context.Context, token string, shortURLS chan string) error {
 	tx, err := db.pool.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("transaction err: %w", err)
@@ -194,13 +193,12 @@ func (db *DB) DeleteURLS(ctx context.Context, wg *sync.WaitGroup, shortURLS chan
 
 	b := &pgx.Batch{}
 
-	wg.Add(1)
 	go func() {
-		defer wg.Done()
 		for {
 			url, ok := <-shortURLS
 			if !ok {
 				if b.Len() != 0 {
+					db.log.Debug("finish")
 					batchResults := tx.SendBatch(ctx, b)
 					er := batchResults.Close()
 					if er != nil {
@@ -214,8 +212,8 @@ func (db *DB) DeleteURLS(ctx context.Context, wg *sync.WaitGroup, shortURLS chan
 				}
 				break
 			}
-			sqlStatement := "UPDATE urls SET is_deleted = true WHERE short_url=$1"
-			b.Queue(sqlStatement, url)
+			sqlStatement := "UPDATE urls SET is_deleted = true WHERE short_url=$1 AND user_token=$2"
+			b.Queue(sqlStatement, url, token)
 			if b.Len() >= DeleteBuffer {
 				batchResults := tx.SendBatch(ctx, b)
 				er := batchResults.Close()
