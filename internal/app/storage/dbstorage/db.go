@@ -12,14 +12,17 @@ import (
 )
 
 var ErrDuplicate = errors.New("this url already exists")
+var ErrDeletedURL = errors.New("this url deleted")
 
 type DatabaseStore struct {
 	DB *database.DB
 }
 
 func (ds *DatabaseStore) GetURL(ctx context.Context, shortID string) (string, error) {
-	url, err := ds.DB.GetBasicURL(ctx, shortID)
+	url, isDeleted, err := ds.DB.GetBasicURL(ctx, shortID)
 	switch {
+	case isDeleted:
+		return "", ErrDeletedURL
 	case errors.Is(err, sql.ErrNoRows):
 		return "", fmt.Errorf("URL not found in database: %w", err)
 	case err != nil:
