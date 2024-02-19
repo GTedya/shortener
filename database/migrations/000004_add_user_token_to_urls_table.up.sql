@@ -1,5 +1,5 @@
 START TRANSACTION;
 
-ALTER TABLE urls ADD COLUMN user_token text NULL;
+ALTER TABLE urls ADD COLUMN user_token text;
 
 COMMIT

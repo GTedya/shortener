@@ -101,13 +101,8 @@ func (db *DB) GetShortURL(ctx context.Context, id string) (string, error) {
 
 func (db *DB) SaveURL(ctx context.Context, id, shortID string) (int64, error) {
 	tx, err := db.pool.Begin(ctx)
-	var token sql.NullString
 	if err != nil {
 		return 0, fmt.Errorf("transaction start error: %w", err)
-	}
-	value, ok := ctx.Value(middlewares.ContextKey("token")).(string)
-	if ok {
-		token.String = value
 	}
 
 	defer func() {
@@ -123,7 +118,7 @@ func (db *DB) SaveURL(ctx context.Context, id, shortID string) (int64, error) {
 	}()
 
 	result, err := tx.Exec(ctx, "INSERT INTO urls (short_url, url, user_token) VALUES ($1, $2, $3)",
-		shortID, id, token)
+		shortID, id, ctx.Value(middlewares.ContextKey("token")).(string))
 	if err != nil {
 		return 0, fmt.Errorf("saving url execution error: %w", err)
 	}
