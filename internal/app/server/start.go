@@ -23,7 +23,7 @@ func Start(conf config.Config, log *zap.SugaredLogger, db *database.DB) error {
 		return fmt.Errorf("handler creation error: %w", err)
 	}
 
-	handler.Register(router)
+	handler.Register(router, middleware)
 
 	err = http.ListenAndServe(conf.Address, router)
 	if err != nil {

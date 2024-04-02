@@ -2,23 +2,33 @@ package database
 
 import (
 	"context"
+	"database/sql"
 	"embed"
 	"errors"
 	"fmt"
 
-	"go.uber.org/zap"
+	"github.com/GTedya/shortener/internal/app/middlewares"
+	"github.com/GTedya/shortener/internal/helpers"
 
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	"github.com/golang-migrate/migrate/v4/source/iofs"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"go.uber.org/zap"
 )
 
 type DB struct {
 	pool *pgxpool.Pool
 	log  *zap.SugaredLogger
 }
+
+var BaseURL = "http://localhost:8080/"
+
+const ErrQuery = "query error: %w"
+const ErrCommitTransaction = "transaction commit error"
+const DeleteBuffer = 10
 
 func NewDB(dsn string, logger *zap.SugaredLogger) (*DB, error) {
 	if err := runMigrations(dsn); err != nil {
@@ -64,20 +74,26 @@ func (db *DB) Ping(ctx context.Context) error {
 	return nil
 }
 
-func (db *DB) GetBasicURL(ctx context.Context, shortID string) (string, error) {
+func (db *DB) GetBasicURL(ctx context.Context, shortID string) (string, bool, error) {
 	var url string
-	err := db.pool.QueryRow(ctx, "SELECT url FROM urls WHERE short_url = $1", shortID).Scan(&url)
+	var isDeleted bool
+
+	err := db.pool.QueryRow(ctx, "SELECT url, is_deleted FROM urls WHERE short_url = $1", shortID).Scan(&url, &isDeleted)
 	if err != nil {
-		return "", fmt.Errorf("query error: %w", err)
+		if errors.Is(err, sql.ErrNoRows) {
+			return "", false, fmt.Errorf("record not found")
+		}
+		return "", false, fmt.Errorf(ErrQuery, err)
 	}
-	return url, nil
+
+	return url, isDeleted, nil
 }
 
 func (db *DB) GetShortURL(ctx context.Context, id string) (string, error) {
 	var url string
 	err := db.pool.QueryRow(ctx, "SELECT short_url FROM urls WHERE url = $1", id).Scan(&url)
 	if err != nil {
-		return "", fmt.Errorf("query error: %w", err)
+		return "", fmt.Errorf(ErrQuery, err)
 	}
 	return url, nil
 }
@@ -96,11 +112,12 @@ func (db *DB) SaveURL(ctx context.Context, id, shortID string) (int64, error) {
 			}
 		}
 		if txErr := tx.Commit(ctx); txErr != nil {
-			db.log.Errorw("transaction commit error", "error", txErr)
+			db.log.Errorw(ErrCommitTransaction, "error", txErr)
 		}
 	}()
 
-	result, err := tx.Exec(ctx, "INSERT INTO urls (short_url, url) VALUES ($1, $2)", shortID, id)
+	result, err := tx.Exec(ctx, "INSERT INTO urls (short_url, url, user_token) VALUES ($1, $2, $3)",
+		shortID, id, ctx.Value(middlewares.ContextKey("token")).(string))
 	if err != nil {
 		return 0, fmt.Errorf("saving url execution error: %w", err)
 	}
@@ -123,7 +140,7 @@ func (db *DB) Batch(ctx context.Context, records map[string]string) error {
 			}
 		}
 		if txErr := tx.Commit(ctx); txErr != nil {
-			db.log.Errorw("transaction commit error", "error", txErr)
+			db.log.Errorw(ErrCommitTransaction, "err", txErr)
 		}
 	}()
 
@@ -141,4 +158,83 @@ func (db *DB) Batch(ctx context.Context, records map[string]string) error {
 	}
 
 	return nil
+}
+
+func (db *DB) UserURLS(ctx context.Context, token string) ([]helpers.UserURL, error) {
+	rows, err := db.pool.Query(ctx, "SELECT short_url, url FROM urls WHERE user_token = $1 AND is_deleted=false", token)
+	if err != nil {
+		return nil, fmt.Errorf(ErrQuery, err)
+	}
+	var urls []helpers.UserURL
+
+	for rows.Next() {
+		var url helpers.UserURL
+		if err = rows.Scan(&url.ShortURL, &url.OriginalURL); err != nil {
+			return nil, fmt.Errorf("rows scan error: %w", err)
+		}
+		url.ShortURL = BaseURL + url.ShortURL
+		urls = append(urls, url)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("error in query all urls: %w", err)
+	}
+
+	defer rows.Close()
+
+	return urls, nil
+}
+
+func (db *DB) DeleteURLS(ctx context.Context, token string, shortURLS chan string) error {
+	tx, err := db.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("transaction err: %w", err)
+	}
+
+	b := &pgx.Batch{}
+
+	go func() {
+		for {
+			url, ok := <-shortURLS
+			if !ok {
+				if b.Len() != 0 {
+					db.log.Debug("finish")
+					batchResults := tx.SendBatch(ctx, b)
+					er := batchResults.Close()
+					if er != nil {
+						db.log.Errorw("batch closing error", "error", er)
+						return
+					}
+					er = tx.Commit(ctx)
+					if er != nil {
+						db.log.Error(fmt.Errorf("%s: %w", ErrCommitTransaction, err))
+					}
+				}
+				break
+			}
+			sqlStatement := "UPDATE urls SET is_deleted = true WHERE short_url=$1 AND user_token=$2"
+			b.Queue(sqlStatement, url, token)
+			if b.Len() >= DeleteBuffer {
+				batchResults := tx.SendBatch(ctx, b)
+				er := batchResults.Close()
+				if er != nil {
+					db.log.Errorw("batch closing error", "error", er)
+					return
+				}
+				b = &pgx.Batch{}
+			}
+		}
+	}()
+
+	return nil
+}
+
+func (db *DB) IsUserURL(ctx context.Context, token string, shortURL string) (bool, error) {
+	var isOwner bool
+	err := db.pool.QueryRow(ctx, "select exists (select true from urls WHERE short_url = $1 AND user_token = $2);",
+		shortURL, token).Scan(&isOwner)
+	if err != nil {
+		return false, fmt.Errorf(ErrQuery, err)
+	}
+	return isOwner, nil
 }
