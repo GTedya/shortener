@@ -2,6 +2,7 @@ package middlewares
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"time"
 
@@ -24,6 +25,12 @@ const (
 func (m Middleware) TokenCreate(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var cooks *http.Cookie
+
+		cooks, err := r.Cookie(tokenCookie)
+		if !errors.Is(err, http.ErrNoCookie) && err != nil {
+			m.Log.Errorf("cookie receiving error: %w", err)
+			return
+		}
 
 		token := jwt.NewWithClaims(jwt.SigningMethodHS256, Claims{
 			RegisteredClaims: jwt.RegisteredClaims{
