@@ -16,12 +16,11 @@ import (
 
 type handler struct {
 	log   *zap.SugaredLogger
-	db    *database.DB
+	db    database.DB
 	store Store
 	conf  config.Config
 }
 
-const urlLen = 6
 const contentType = "Content-Type"
 const appJSON = "application/json"
 
@@ -31,7 +30,7 @@ type Store interface {
 	Batch(ctx context.Context, urls map[string]string) error
 }
 
-func NewHandler(logger *zap.SugaredLogger, conf config.Config, db *database.DB) (Handler, error) {
+func NewHandler(logger *zap.SugaredLogger, conf config.Config, db database.DB) (Handler, error) {
 	store, err := storage.NewStore(conf, db)
 	if err != nil {
 		return nil, fmt.Errorf("store creation error: %w", err)

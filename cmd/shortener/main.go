@@ -1,6 +1,8 @@
 package main
 
 import (
+	_ "net/http/pprof"
+
 	"github.com/GTedya/shortener/database"
 
 	"github.com/GTedya/shortener/config"
@@ -17,6 +19,11 @@ func main() {
 		log.Errorw("database creation error", err)
 	}
 	defer db.Close()
+
+	err = database.RunMigrations(conf.DatabaseDSN)
+	if err != nil {
+		log.Errorw("database migration error", err)
+	}
 
 	err = server.Start(conf, log, db)
 	if err != nil {

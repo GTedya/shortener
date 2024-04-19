@@ -28,7 +28,7 @@ type Store interface {
 	Batch(ctx context.Context, urls map[string]string) error
 }
 
-func NewStore(conf config.Config, db *database.DB) (Store, error) {
+func NewStore(conf config.Config, db database.DB) (Store, error) {
 	var store Store
 	if len(conf.DatabaseDSN) != 0 {
 		store = &dbstorage.DatabaseStore{DB: db}

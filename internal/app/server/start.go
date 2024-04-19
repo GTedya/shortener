@@ -11,12 +11,14 @@ import (
 	"github.com/GTedya/shortener/internal/app/handlers"
 	"github.com/GTedya/shortener/internal/app/middlewares"
 	"github.com/go-chi/chi/v5"
+	chiMiddleware "github.com/go-chi/chi/v5/middleware"
 )
 
-func Start(conf config.Config, log *zap.SugaredLogger, db *database.DB) error {
+func Start(conf config.Config, log *zap.SugaredLogger, db database.DB) error {
 	router := chi.NewRouter()
 	middleware := middlewares.Middleware{Log: log}
 	router.Use(middleware.LogHandle, middleware.GzipCompressHandle, middleware.GzipDecompressMiddleware)
+	router.Mount("/debug", chiMiddleware.Profiler())
 
 	handler, err := handlers.NewHandler(log, conf, db)
 	if err != nil {

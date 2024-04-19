@@ -15,7 +15,7 @@ var ErrDuplicate = errors.New("this url already exists")
 var ErrDeletedURL = errors.New("this url deleted")
 
 type DatabaseStore struct {
-	DB *database.DB
+	DB database.DB
 }
 
 func (ds *DatabaseStore) GetURL(ctx context.Context, shortID string) (string, error) {
