@@ -43,7 +43,7 @@ func (h *handler) Register(router *chi.Mux, middleware middlewares.Middleware) {
 
 	router.Get("/{id}", h.getURLByID)
 
-	router.Post("/api/shorten", h.urlByJSON)
+	router.With(middleware.TokenCreate).Post("/api/shorten", h.urlByJSON)
 
 	router.Get("/ping", h.getPing)
 
