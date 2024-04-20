@@ -32,6 +32,7 @@ func (db *db) SaveURL(ctx context.Context, id, shortID string) (int64, error) {
 			db.log.Errorw(ErrCommitTransaction, "error", txErr)
 		}
 	}()
+	db.log.Debugf("sh: %s, id: %s, token: %s", shortID, id, ctx.Value(middlewares.ContextKey("token")).(string))
 
 	result, err := tx.Exec(ctx, "INSERT INTO urls (short_url, url, user_token) VALUES ($1, $2, $3)",
 		shortID, id, ctx.Value(middlewares.ContextKey("token")).(string))

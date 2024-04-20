@@ -18,7 +18,7 @@ type ContextKey string
 const (
 	TokenContextKey ContextKey = "token"
 	SecretKey                  = "some_key"
-	TokenExp                   = 30 * time.Millisecond
+	TokenExp                   = 3 * time.Hour
 	tokenCookie                = "token"
 )
 
@@ -31,21 +31,22 @@ func (m Middleware) TokenCreate(next http.Handler) http.Handler {
 			m.Log.Errorf("cookie receiving error: %w", err)
 			return
 		}
+		if errors.Is(err, http.ErrNoCookie) {
+			token := jwt.NewWithClaims(jwt.SigningMethodHS256, Claims{
+				RegisteredClaims: jwt.RegisteredClaims{
+					ExpiresAt: jwt.NewNumericDate(time.Now().Add(TokenExp)),
+				},
+			})
 
-		token := jwt.NewWithClaims(jwt.SigningMethodHS256, Claims{
-			RegisteredClaims: jwt.RegisteredClaims{
-				ExpiresAt: jwt.NewNumericDate(time.Now().Add(TokenExp)),
-			},
-		})
+			tokenString, err := token.SignedString([]byte(SecretKey))
+			if err != nil {
+				m.Log.Errorf("token signed error: %w", err)
+				return
+			}
 
-		tokenString, err := token.SignedString([]byte(SecretKey))
-		if err != nil {
-			m.Log.Errorf("token signed error: %w", err)
-			return
+			cooks = &http.Cookie{Name: tokenCookie, Value: tokenString}
+			http.SetCookie(w, cooks)
 		}
-
-		cooks = &http.Cookie{Name: tokenCookie, Value: tokenString}
-		http.SetCookie(w, cooks)
 
 		ctx := context.WithValue(r.Context(), TokenContextKey, cooks.Value)
 		r = r.WithContext(ctx)
