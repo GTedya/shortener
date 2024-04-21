@@ -26,7 +26,7 @@ const appJSON = "application/json"
 
 type Store interface {
 	GetURL(ctx context.Context, shortID string) (string, error)
-	SaveURL(ctx context.Context, id, shortID string) error
+	SaveURL(ctx context.Context, token, id, shortID string) error
 	Batch(ctx context.Context, urls map[string]string) error
 }
 

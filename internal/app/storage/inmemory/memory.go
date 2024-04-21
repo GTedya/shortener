@@ -27,7 +27,7 @@ func (ms *MemoryStore) GetURL(_ context.Context, shortID string) (string, error)
 	return url, nil
 }
 
-func (ms *MemoryStore) SaveURL(_ context.Context, id, shortID string) error {
+func (ms *MemoryStore) SaveURL(_ context.Context, _, id, shortID string) error {
 	ms.Data[shortID] = id
 	return nil
 }

@@ -9,11 +9,11 @@ import (
 )
 
 type SaveURLS interface {
-	SaveURL(ctx context.Context, id, shortID string) (int64, error)
+	SaveURL(ctx context.Context, token, id, shortID string) (int64, error)
 	Batch(ctx context.Context, records map[string]string) error
 }
 
-func (db *db) SaveURL(ctx context.Context, id, shortID string) (int64, error) {
+func (db *db) SaveURL(ctx context.Context, token, id, shortID string) (int64, error) {
 	tx, err := db.pool.Begin(ctx)
 	if err != nil {
 		return 0, fmt.Errorf("transaction start error: %w", err)
@@ -30,7 +30,6 @@ func (db *db) SaveURL(ctx context.Context, id, shortID string) (int64, error) {
 			db.log.Errorw(ErrCommitTransaction, "error", txErr)
 		}
 	}()
-	token := ctx.Value("token")
 	result, err := tx.Exec(ctx, "INSERT INTO urls (short_url, url, user_token) VALUES ($1, $2, $3)",
 		shortID, id, token)
 	if err != nil {

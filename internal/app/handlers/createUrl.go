@@ -1,16 +1,15 @@
 package handlers
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/GTedya/shortener/internal/app/middlewares"
 	"io"
 	"net/http"
 
 	"github.com/google/uuid"
 
+	"github.com/GTedya/shortener/internal/app/middlewares"
 	"github.com/GTedya/shortener/internal/app/storage"
 	"github.com/GTedya/shortener/internal/app/storage/dbstorage"
 )
@@ -49,9 +48,7 @@ func (h *handler) createURL(w http.ResponseWriter, r *http.Request) {
 	}
 	http.SetCookie(w, token)
 
-	ctx := context.WithValue(r.Context(), "token", token.Value)
-
-	err = h.store.SaveURL(ctx, id, shortID)
+	err = h.store.SaveURL(r.Context(), token.Value, id, shortID)
 
 	if errors.Is(err, dbstorage.ErrDuplicate) {
 		w.WriteHeader(http.StatusConflict)
@@ -115,7 +112,13 @@ func (h *handler) urlByJSON(w http.ResponseWriter, r *http.Request) {
 	id := u.URL
 	shortID := uuid.NewString()
 
-	err = h.store.SaveURL(r.Context(), id, shortID)
+	token, err := middlewares.TokenCreate()
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+	}
+	http.SetCookie(w, token)
+
+	err = h.store.SaveURL(r.Context(), token.Value, id, shortID)
 
 	if errors.Is(err, dbstorage.ErrDuplicate) {
 		w.WriteHeader(http.StatusConflict)

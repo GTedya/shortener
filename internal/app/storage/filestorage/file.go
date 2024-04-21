@@ -24,8 +24,8 @@ func (fs *FileStore) GetURL(ctx context.Context, shortID string) (string, error)
 	return url, nil
 }
 
-func (fs *FileStore) SaveURL(ctx context.Context, id, shortID string) error {
-	err := fs.Memory.SaveURL(ctx, id, shortID)
+func (fs *FileStore) SaveURL(ctx context.Context, _, id, shortID string) error {
+	err := fs.Memory.SaveURL(ctx, "", id, shortID)
 	if err != nil {
 		return fmt.Errorf("memory store error: %w", err)
 	}
