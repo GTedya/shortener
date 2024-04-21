@@ -39,11 +39,11 @@ func NewHandler(logger *zap.SugaredLogger, conf config.Config, db database.DB) (
 }
 
 func (h *handler) Register(router *chi.Mux, middleware middlewares.Middleware) {
-	router.With(middleware.TokenCreate).Post("/", h.createURL)
+	router.Post("/", h.createURL)
 
 	router.Get("/{id}", h.getURLByID)
 
-	router.With(middleware.TokenCreate).Post("/api/shorten", h.urlByJSON)
+	router.Post("/api/shorten", h.urlByJSON)
 
 	router.Get("/ping", h.getPing)
 

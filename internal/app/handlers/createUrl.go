@@ -1,9 +1,11 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/GTedya/shortener/internal/app/middlewares"
 	"io"
 	"net/http"
 
@@ -41,7 +43,15 @@ func (h *handler) createURL(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add(contentType, "text/plain; application/json")
 	shortID = uuid.NewString()
 
-	err = h.store.SaveURL(r.Context(), id, shortID)
+	token, err := middlewares.TokenCreate()
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+	}
+	http.SetCookie(w, token)
+
+	ctx := context.WithValue(r.Context(), "token", token.Value)
+
+	err = h.store.SaveURL(ctx, id, shortID)
 
 	if errors.Is(err, dbstorage.ErrDuplicate) {
 		w.WriteHeader(http.StatusConflict)
