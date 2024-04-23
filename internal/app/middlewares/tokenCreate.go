@@ -24,8 +24,8 @@ const (
 	SecretKey = "some_key"
 	// TokenExp представляет срок действия токена JWT.
 	TokenExp = 3 * time.Hour
-	// tokenCookie определяет имя куки, в которой хранится токен.
-	tokenCookie = "token"
+	// TokenCookie определяет имя куки, в которой хранится токен.
+	TokenCookie = "token"
 )
 
 // TokenCreate представляет middleware для создания и добавления токена JWT в куку.
@@ -46,7 +46,7 @@ func (m Middleware) TokenCreate(next http.Handler) http.Handler {
 			return
 		}
 
-		cooks = &http.Cookie{Name: tokenCookie, Value: tokenString}
+		cooks = &http.Cookie{Name: TokenCookie, Value: tokenString}
 		http.SetCookie(w, cooks)
 
 		ctx := context.WithValue(r.Context(), TokenContextKey, cooks.Value)
@@ -71,7 +71,7 @@ func TokenCreate() (*http.Cookie, error) {
 		return nil, fmt.Errorf("token signed error: %w", err)
 	}
 
-	cooks = &http.Cookie{Name: tokenCookie, Value: tokenString}
+	cooks = &http.Cookie{Name: TokenCookie, Value: tokenString}
 
 	return cooks, nil
 }

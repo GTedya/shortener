@@ -11,10 +11,17 @@ import (
 
 // GetURLS предоставляет методы для получения информации о URL из базы данных.
 type GetURLS interface {
-	GetShortURL(ctx context.Context, url string) (string, error)                // GetShortURL возвращает сокращенный URL для указанного оригинального URL.
-	GetBasicURL(ctx context.Context, shortID string) (string, bool, error)      // GetBasicURL возвращает оригинальный URL и информацию о том, удален ли он, для указанного сокращенного URL.
-	UserURLS(ctx context.Context, token string) ([]helpers.UserURL, error)      // UserURLS возвращает все URL, связанные с указанным токеном пользователя.
-	IsUserURL(ctx context.Context, token string, shortURL string) (bool, error) // IsUserURL возвращает true, если указанный URL принадлежит указанному пользователю.
+	// GetShortURL возвращает сокращенный URL для указанного оригинального URL.
+	GetShortURL(ctx context.Context, url string) (string, error)
+
+	// GetBasicURL возвращает оригинальный URL и информацию о том, удален ли он, для указанного сокращенного URL.
+	GetBasicURL(ctx context.Context, shortID string) (string, bool, error)
+
+	// UserURLS возвращает все URL, связанные с указанным токеном пользователя.
+	UserURLS(ctx context.Context, token string) ([]helpers.UserURL, error)
+
+	// IsUserURL возвращает true, если указанный URL принадлежит указанному пользователю.
+	IsUserURL(ctx context.Context, token string, shortURL string) (bool, error)
 }
 
 // GetBasicURL возвращает оригинальный URL и информацию о том, удален ли он, для указанного сокращенного URL.

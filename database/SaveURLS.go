@@ -10,8 +10,11 @@ import (
 
 // SaveURLS предоставляет методы для сохранения URL в базе данных.
 type SaveURLS interface {
-	SaveURL(ctx context.Context, token, id, shortID string) (int64, error) // SaveURL сохраняет URL в базе данных и возвращает количество измененных строк.
-	Batch(ctx context.Context, records map[string]string) error            // Batch выполняет пакетное сохранение URL в базе данных.
+	// SaveURL сохраняет URL в базе данных и возвращает количество измененных строк.
+	SaveURL(ctx context.Context, token, id, shortID string) (int64, error)
+
+	// Batch выполняет пакетное сохранение URL в базе данных.
+	Batch(ctx context.Context, records map[string]string) error
 }
 
 // SaveURL сохраняет URL в базе данных и возвращает количество измененных строк.

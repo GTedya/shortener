@@ -1,4 +1,4 @@
-// Package handlers предоставляет обработчики HTTP-запросов
+// Package handlers предоставляет обработчики HTTP-запросов.
 package handlers
 
 import (

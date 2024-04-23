@@ -30,9 +30,14 @@ const appJSON = "application/json"
 
 // Store предоставляет интерфейс для хранилища URL.
 type Store interface {
-	GetURL(ctx context.Context, shortID string) (string, error)   // GetURL получает оригинальный URL по его сокращенной версии.
-	SaveURL(ctx context.Context, token, id, shortID string) error // SaveURL сохраняет URL в хранилище и связывает его с сокращенной версией.
-	Batch(ctx context.Context, urls map[string]string) error      // Batch пакетно сохраняет URL в хранилище и связывает их с сокращенными версиями.
+	// GetURL получает оригинальный URL по его сокращенной версии.
+	GetURL(ctx context.Context, shortID string) (string, error)
+
+	// SaveURL сохраняет URL в хранилище и связывает его с сокращенной версией.
+	SaveURL(ctx context.Context, token, id, shortID string) error
+
+	// Batch пакетно сохраняет URL в хранилище и связывает их с сокращенными версиями.
+	Batch(ctx context.Context, urls map[string]string) error
 }
 
 // NewHandler создает новый экземпляр обработчика HTTP-запросов.
@@ -46,17 +51,24 @@ func NewHandler(logger *zap.SugaredLogger, conf config.Config, db database.DB) (
 
 // Register регистрирует обработчики маршрутов HTTP в маршрутизаторе chi.
 func (h *handler) Register(router *chi.Mux, middleware middlewares.Middleware) {
-	router.Post("/", h.createURL) // Создает сокращенный URL.
+	// Создает сокращенный URL.
+	router.Post("/", h.createURL)
 
-	router.Get("/{id}", h.getURLByID) // Получает оригинальный URL по его сокращенной версии.
+	// Получает оригинальный URL по его сокращенной версии.
+	router.Get("/{id}", h.getURLByID)
 
-	router.Post("/api/shorten", h.urlByJSON) // Создает сокращенный URL из JSON-данных.
+	// Создает сокращенный URL из JSON-данных.
+	router.Post("/api/shorten", h.urlByJSON)
 
-	router.Get("/ping", h.getPing) // Проверяет доступность сервера.
+	// Проверяет доступность сервера.
+	router.Get("/ping", h.getPing)
 
-	router.Post("/api/shorten/batch", h.batch) // Пакетно создает сокращенные URL.
+	// Пакетно создает сокращенные URL.
+	router.Post("/api/shorten/batch", h.batch)
 
-	router.With(middleware.AuthCheck).Get("/api/user/urls", h.userUrls) // Получает все сокращенные URL пользователя.
+	// Получает все сокращенные URL пользователя.
+	router.With(middleware.AuthCheck).Get("/api/user/urls", h.userUrls)
 
-	router.With(middleware.AuthCheck).Delete("/api/user/urls", h.deleteUrls) // Удаляет сокращенные URL пользователя.
+	// Удаляет сокращенные URL пользователя.
+	router.With(middleware.AuthCheck).Delete("/api/user/urls", h.deleteUrls)
 }

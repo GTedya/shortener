@@ -9,7 +9,8 @@ import (
 	"strings"
 )
 
-// GzipDecompressMiddleware представляет middleware для декомпрессии тела запроса, если оно было сжато с использованием gzip.
+// GzipDecompressMiddleware представляет middleware для декомпрессии тела запроса,
+// если оно было сжато с использованием gzip.
 // Если заголовок Content-Type указывает на тип application/x-gzip, тело запроса декомпримируется из формата gzip.
 // Распакованное тело заменяет исходное тело запроса, а затем запрос передается следующему обработчику.
 func (m Middleware) GzipDecompressMiddleware(next http.Handler) http.Handler {
