@@ -7,10 +7,12 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
+// DeleteURLS представляет интерфейс для удаления нескольких URL из базы данных.
 type DeleteURLS interface {
 	DeleteURLS(ctx context.Context, token string, shortURLS chan string) error
 }
 
+// DeleteURLS удаляет несколько URL из базы данных, используя указанный токен пользователя и канал URL-адресов.
 func (db *db) DeleteURLS(ctx context.Context, token string, shortURLS chan string) error {
 	tx, err := db.pool.Begin(ctx)
 	if err != nil {

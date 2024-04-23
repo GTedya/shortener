@@ -7,6 +7,7 @@ import (
 	"net/http"
 )
 
+// deleteUrls обрабатывает запрос на удаление сокращенных URL, принадлежащих пользователю.
 func (h *handler) deleteUrls(w http.ResponseWriter, r *http.Request) {
 	token, err := r.Cookie("token")
 	if err != nil {

@@ -1,3 +1,4 @@
+// Package database предоставляет функциональность для работы с базой данных.
 package database
 
 import (
@@ -10,29 +11,37 @@ import (
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	"github.com/golang-migrate/migrate/v4/source/iofs"
 	"github.com/jackc/pgx/v5/pgxpool"
-
 	"go.uber.org/zap"
 )
 
+// db представляет реализацию интерфейса DB для работы с базой данных.
 type db struct {
-	pool *pgxpool.Pool
-	log  *zap.SugaredLogger
+	pool *pgxpool.Pool      // Пул подключений к базе данных.
+	log  *zap.SugaredLogger // Логгер для ведения журнала событий.
 }
 
+// DB представляет интерфейс для работы с базой данных.
 type DB interface {
-	Ping(ctx context.Context) error
-	Close()
+	Ping(ctx context.Context) error // Проверяет подключение к базе данных.
+	Close()                         // Закрывает подключение к базе данных.
 	GetURLS
 	SaveURLS
 	DeleteURLS
 }
 
+// BaseURL представляет базовый URL для сокращенных ссылок.
 var BaseURL = "http://localhost:8080/"
 
+// ErrQuery представляет ошибку запроса к базе данных.
 const ErrQuery = "query error: %w"
+
+// ErrCommitTransaction представляет ошибку фиксации транзакции.
 const ErrCommitTransaction = "transaction commit error"
+
+// DeleteBuffer определяет размер буфера для удаления записей из базы данных.
 const DeleteBuffer = 10
 
+// NewDB создает новый экземпляр базы данных на основе переданных параметров.
 func NewDB(dsn string, logger *zap.SugaredLogger) (DB, error) {
 	pool, err := pgxpool.New(context.Background(), dsn)
 	if err != nil {
@@ -44,6 +53,7 @@ func NewDB(dsn string, logger *zap.SugaredLogger) (DB, error) {
 //go:embed migrations/*.sql
 var migrationsDir embed.FS
 
+// RunMigrations выполняет миграции базы данных.
 func RunMigrations(dsn string) error {
 	d, err := iofs.New(migrationsDir, "migrations")
 	if err != nil {
@@ -62,10 +72,12 @@ func RunMigrations(dsn string) error {
 	return nil
 }
 
+// Close закрывает соединение с базой данных.
 func (db *db) Close() {
 	db.pool.Close()
 }
 
+// Ping проверяет соединение с базой данных.
 func (db *db) Ping(ctx context.Context) error {
 	err := db.pool.Ping(ctx)
 	if err != nil {

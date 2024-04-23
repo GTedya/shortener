@@ -1,3 +1,4 @@
+// Package handlers предоставляет обработчики HTTP-запросов
 package handlers
 
 import (
@@ -14,17 +15,23 @@ import (
 	"github.com/GTedya/shortener/internal/app/storage/dbstorage"
 )
 
+// errResponseWrite представляет ошибку записи данных.
 var errResponseWrite = errors.New("data writing error")
+
+// errJSONMarshal представляет ошибку маршалинга JSON.
 var errJSONMarshal = errors.New("json marshalling error")
 
+// URL представляет структуру для хранения URL.
 type URL struct {
 	URL string `json:"url"`
 }
 
+// ShortURL представляет структуру для хранения сокращенного URL.
 type ShortURL struct {
 	URL string `json:"result"`
 }
 
+// createURL обрабатывает запрос на создание сокращенного URL.
 func (h *handler) createURL(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -81,6 +88,7 @@ func (h *handler) createURL(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// urlByJSON обрабатывает запрос на создание сокращенного URL, переданный в формате JSON.
 func (h *handler) urlByJSON(w http.ResponseWriter, r *http.Request) {
 	content := r.Header.Get(contentType)
 	if content != appJSON {
@@ -166,6 +174,7 @@ func (h *handler) urlByJSON(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// batch обрабатывает запрос на пакетное создание сокращенных URL.
 func (h *handler) batch(w http.ResponseWriter, r *http.Request) {
 	content := r.Header.Get(contentType)
 	if content != appJSON {

@@ -1,3 +1,4 @@
+// Package config предоставляет функциональность для работы с конфигурацией приложения.
 package config
 
 import (
@@ -5,17 +6,19 @@ import (
 	"os"
 )
 
+// Config представляет структуру конфигурации приложения.
 type Config struct {
-	Address         string
-	URL             string
-	FileStoragePath string
-	DatabaseDSN     string
+	Address         string // Адрес и порт, на котором запускается сервер.
+	URL             string // Базовый URL для сокращенных ссылок.
+	FileStoragePath string // Путь к файловому хранилищу.
+	DatabaseDSN     string // DSN для подключения к базе данных.
 }
 
+// GetConfig получает конфигурацию из флагов командной строки и окружения.
 func GetConfig() (c Config) {
 	flag.StringVar(&c.Address, "a", "localhost:8080", "address and port to run server")
 	flag.StringVar(&c.URL, "b", "http://localhost:8080", "basic shorten URL")
-	flag.StringVar(&c.DatabaseDSN, "d", "", "database dsn")
+	flag.StringVar(&c.DatabaseDSN, "d", "postgres://root:root@localhost:5432/shortener?sslmode=disable", "database dsn")
 	flag.StringVar(&c.FileStoragePath, "f", "/tmp/short-url-database.json", "file storage path")
 	flag.Parse()
 

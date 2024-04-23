@@ -10,6 +10,7 @@ import (
 	"github.com/GTedya/shortener/internal/app/storage/dbstorage"
 )
 
+// getURLByID получает оригинальный URL по его сокращенной версии.
 func (h *handler) getURLByID(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 
@@ -29,6 +30,7 @@ func (h *handler) getURLByID(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, shortenURL, http.StatusTemporaryRedirect)
 }
 
+// userUrls получает список сокращенных URL, принадлежащих текущему пользователю.
 func (h *handler) userUrls(w http.ResponseWriter, r *http.Request) {
 	token, err := r.Cookie("token")
 	if err != nil {

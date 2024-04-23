@@ -9,13 +9,15 @@ import (
 	"github.com/GTedya/shortener/internal/helpers"
 )
 
+// GetURLS предоставляет методы для получения информации о URL из базы данных.
 type GetURLS interface {
-	GetShortURL(ctx context.Context, url string) (string, error)
-	GetBasicURL(ctx context.Context, shortID string) (string, bool, error)
-	UserURLS(ctx context.Context, token string) ([]helpers.UserURL, error)
-	IsUserURL(ctx context.Context, token string, shortURL string) (bool, error)
+	GetShortURL(ctx context.Context, url string) (string, error)                // GetShortURL возвращает сокращенный URL для указанного оригинального URL.
+	GetBasicURL(ctx context.Context, shortID string) (string, bool, error)      // GetBasicURL возвращает оригинальный URL и информацию о том, удален ли он, для указанного сокращенного URL.
+	UserURLS(ctx context.Context, token string) ([]helpers.UserURL, error)      // UserURLS возвращает все URL, связанные с указанным токеном пользователя.
+	IsUserURL(ctx context.Context, token string, shortURL string) (bool, error) // IsUserURL возвращает true, если указанный URL принадлежит указанному пользователю.
 }
 
+// GetBasicURL возвращает оригинальный URL и информацию о том, удален ли он, для указанного сокращенного URL.
 func (db *db) GetBasicURL(ctx context.Context, shortID string) (string, bool, error) {
 	var (
 		url       string
@@ -34,6 +36,7 @@ func (db *db) GetBasicURL(ctx context.Context, shortID string) (string, bool, er
 	return url, isDeleted, nil
 }
 
+// GetShortURL возвращает сокращенный URL для указанного оригинального URL.
 func (db *db) GetShortURL(ctx context.Context, id string) (string, error) {
 	var url string
 	err := db.pool.QueryRow(ctx, "SELECT short_url FROM urls WHERE url = $1", id).Scan(&url)
@@ -43,6 +46,7 @@ func (db *db) GetShortURL(ctx context.Context, id string) (string, error) {
 	return url, nil
 }
 
+// UserURLS возвращает все URL, связанные с указанным токеном пользователя.
 func (db *db) UserURLS(ctx context.Context, token string) ([]helpers.UserURL, error) {
 	rows, err := db.pool.Query(ctx, "SELECT short_url, url FROM urls WHERE user_token = $1 AND is_deleted=false", token)
 	if err != nil {
@@ -68,6 +72,7 @@ func (db *db) UserURLS(ctx context.Context, token string) ([]helpers.UserURL, er
 	return urls, nil
 }
 
+// IsUserURL возвращает true, если указанный URL принадлежит указанному пользователю.
 func (db *db) IsUserURL(ctx context.Context, token string, shortURL string) (bool, error) {
 	var isOwner bool
 	err := db.pool.QueryRow(ctx, "select exists (select true from urls WHERE short_url = $1 AND user_token = $2);",

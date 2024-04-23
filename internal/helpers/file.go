@@ -11,12 +11,14 @@ import (
 	"github.com/GTedya/shortener/internal/app/logger"
 )
 
+// FileStorage представляет структуру данных для хранения информации о файлах.
 type FileStorage struct {
 	UUID        string `json:"uuid"`
 	ShortURL    string `json:"short_url"`
 	OriginalURL string `json:"original_url"`
 }
 
+// GenerateUUID генерирует уникальный идентификатор на основе последнего UUID из файла.
 func GenerateUUID(filepath string) string {
 	lastUUID := make([]FileStorage, 0)
 	log := logger.CreateLogger()
@@ -43,6 +45,7 @@ func GenerateUUID(filepath string) string {
 	return strconv.Itoa(id + 1)
 }
 
+// FileData читает данные из файла и добавляет их в указанный словарь.
 func FileData(data map[string]string, filepath string) error {
 	lastUUID := make([]FileStorage, 0)
 	bs, err := os.ReadFile(filepath)

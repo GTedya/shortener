@@ -14,6 +14,7 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
+// handler представляет обработчик HTTP-запросов.
 type handler struct {
 	log   *zap.SugaredLogger
 	db    database.DB
@@ -21,15 +22,20 @@ type handler struct {
 	conf  config.Config
 }
 
+// contentType представляет тип контента HTTP.
 const contentType = "Content-Type"
+
+// appJSON представляет значение Content-Type для JSON.
 const appJSON = "application/json"
 
+// Store предоставляет интерфейс для хранилища URL.
 type Store interface {
-	GetURL(ctx context.Context, shortID string) (string, error)
-	SaveURL(ctx context.Context, token, id, shortID string) error
-	Batch(ctx context.Context, urls map[string]string) error
+	GetURL(ctx context.Context, shortID string) (string, error)   // GetURL получает оригинальный URL по его сокращенной версии.
+	SaveURL(ctx context.Context, token, id, shortID string) error // SaveURL сохраняет URL в хранилище и связывает его с сокращенной версией.
+	Batch(ctx context.Context, urls map[string]string) error      // Batch пакетно сохраняет URL в хранилище и связывает их с сокращенными версиями.
 }
 
+// NewHandler создает новый экземпляр обработчика HTTP-запросов.
 func NewHandler(logger *zap.SugaredLogger, conf config.Config, db database.DB) (Handler, error) {
 	store, err := storage.NewStore(conf, db)
 	if err != nil {
@@ -38,18 +44,19 @@ func NewHandler(logger *zap.SugaredLogger, conf config.Config, db database.DB) (
 	return &handler{log: logger, conf: conf, store: store, db: db}, nil
 }
 
+// Register регистрирует обработчики маршрутов HTTP в маршрутизаторе chi.
 func (h *handler) Register(router *chi.Mux, middleware middlewares.Middleware) {
-	router.Post("/", h.createURL)
+	router.Post("/", h.createURL) // Создает сокращенный URL.
 
-	router.Get("/{id}", h.getURLByID)
+	router.Get("/{id}", h.getURLByID) // Получает оригинальный URL по его сокращенной версии.
 
-	router.Post("/api/shorten", h.urlByJSON)
+	router.Post("/api/shorten", h.urlByJSON) // Создает сокращенный URL из JSON-данных.
 
-	router.Get("/ping", h.getPing)
+	router.Get("/ping", h.getPing) // Проверяет доступность сервера.
 
-	router.Post("/api/shorten/batch", h.batch)
+	router.Post("/api/shorten/batch", h.batch) // Пакетно создает сокращенные URL.
 
-	router.With(middleware.AuthCheck).Get("/api/user/urls", h.userUrls)
+	router.With(middleware.AuthCheck).Get("/api/user/urls", h.userUrls) // Получает все сокращенные URL пользователя.
 
-	router.With(middleware.AuthCheck).Delete("/api/user/urls", h.deleteUrls)
+	router.With(middleware.AuthCheck).Delete("/api/user/urls", h.deleteUrls) // Удаляет сокращенные URL пользователя.
 }

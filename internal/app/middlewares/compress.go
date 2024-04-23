@@ -8,11 +8,13 @@ import (
 	"strings"
 )
 
+// gzipWriter представляет обертку над http.ResponseWriter для поддержки сжатия gzip.
 type gzipWriter struct {
 	http.ResponseWriter
 	Writer io.Writer
 }
 
+// Write перенаправляет запись внутреннему Writer'у сжатия.
 func (w gzipWriter) Write(b []byte) (int, error) {
 	writer, err := w.Writer.Write(b)
 	if err != nil {
@@ -21,6 +23,8 @@ func (w gzipWriter) Write(b []byte) (int, error) {
 	return writer, nil
 }
 
+// GzipCompressHandle возвращает HTTP-обработчик, который сжимает ответ с использованием gzip, если клиент поддерживает сжатие.
+// Если клиент не поддерживает сжатие или тип содержимого не является application/json или text/html, запрос передается следующему обработчику без изменений.
 func (m Middleware) GzipCompressHandle(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
