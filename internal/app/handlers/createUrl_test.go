@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
+	"go.uber.org/zap"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -163,13 +164,14 @@ func TestJsonHandler(t *testing.T) {
 
 func BenchmarkUrlByJSON(b *testing.B) {
 	conf := config.Config{Address: "localhost:8080", URL: "short"}
+	log := zap.S()
 
 	store, err := storage.NewStore(conf, nil)
 	if err != nil {
 		b.Fatal(err)
 	}
 
-	h := &handler{log: nil, conf: conf, store: store}
+	h := &handler{log: log, conf: conf, store: store}
 	reader := strings.NewReader(`{"url": "https://example.com"}`)
 	request := httptest.NewRequest(http.MethodPost, "http://localhost:8080/api/shorten/", reader)
 	request.Header.Add("Content-Type", "application/json")
