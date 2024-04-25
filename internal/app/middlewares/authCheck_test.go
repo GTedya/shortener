@@ -2,13 +2,14 @@ package middlewares
 
 import (
 	"github.com/stretchr/testify/assert"
+
 	"net/http"
 	"net/http/httptest"
 	"testing"
 )
 
 func TestAuthCheck(t *testing.T) {
-	req, err := http.NewRequest("GET", "/api/user/urls", nil)
+	req, err := http.NewRequest(http.MethodGet, "/api/user/urls", nil)
 	assert.NoError(t, err)
 
 	req.AddCookie(&http.Cookie{Name: "token", Value: "fake_token"})
@@ -18,7 +19,7 @@ func TestAuthCheck(t *testing.T) {
 		w.WriteHeader(http.StatusCreated)
 	}))
 
-	reqWithoutToken, err := http.NewRequest("GET", "/api/user/urls", nil)
+	reqWithoutToken, err := http.NewRequest(http.MethodGet, "/api/user/urls", nil)
 	assert.NoError(t, err)
 
 	wWithoutToken := httptest.NewRecorder()
