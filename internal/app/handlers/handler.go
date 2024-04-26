@@ -1,4 +1,3 @@
-// Package handlers предоставляет обработчики HTTP-запросов.
 package handlers
 
 import (
@@ -53,13 +52,13 @@ func NewHandler(logger *zap.SugaredLogger, conf config.Config, db database.DB) (
 // Register регистрирует обработчики маршрутов HTTP в маршрутизаторе chi.
 func (h *handler) Register(router *chi.Mux, middleware middlewares.Middleware) {
 	// Создает сокращенный URL.
-	router.Post("/", h.createURL)
+	router.With(middleware.TokenCreate).Post("/", h.createURL)
 
 	// Получает оригинальный URL по его сокращенной версии.
 	router.Get("/{id}", h.getURLByID)
 
 	// Создает сокращенный URL из JSON-данных.
-	router.Post("/api/shorten", h.urlByJSON)
+	router.With(middleware.TokenCreate).Post("/api/shorten", h.urlByJSON)
 
 	// Проверяет доступность сервера.
 	router.Get("/ping", h.getPing)
