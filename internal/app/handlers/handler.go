@@ -1,3 +1,4 @@
+// Package handlers предоставляет обработчики HTTP-запросов.
 package handlers
 
 import (
@@ -34,7 +35,7 @@ type Store interface {
 	GetURL(ctx context.Context, shortID string) (string, error)
 
 	// SaveURL сохраняет URL в хранилище и связывает его с сокращенной версией.
-	SaveURL(ctx context.Context, token, id, shortID string) error
+	SaveURL(ctx context.Context, id, shortID string) error
 
 	// Batch пакетно сохраняет URL в хранилище и связывает их с сокращенными версиями.
 	Batch(ctx context.Context, urls map[string]string) error

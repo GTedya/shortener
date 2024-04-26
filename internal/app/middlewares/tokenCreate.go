@@ -2,7 +2,7 @@ package middlewares
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"net/http"
 	"time"
 
@@ -34,44 +34,30 @@ func (m Middleware) TokenCreate(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var cooks *http.Cookie
 
-		token := jwt.NewWithClaims(jwt.SigningMethodHS256, Claims{
-			RegisteredClaims: jwt.RegisteredClaims{
-				ExpiresAt: jwt.NewNumericDate(time.Now().Add(TokenExp)),
-			},
-		})
-
-		tokenString, err := token.SignedString([]byte(SecretKey))
-		if err != nil {
-			m.Log.Errorf("token signed error: %w", err)
+		cooks, err := r.Cookie(TokenCookie)
+		if !errors.Is(err, http.ErrNoCookie) && err != nil {
+			m.Log.Errorf("cookie receiving error: %w", err)
 			return
 		}
+		if errors.Is(err, http.ErrNoCookie) {
+			token := jwt.NewWithClaims(jwt.SigningMethodHS256, Claims{
+				RegisteredClaims: jwt.RegisteredClaims{
+					ExpiresAt: jwt.NewNumericDate(time.Now().Add(TokenExp)),
+				},
+			})
 
-		cooks = &http.Cookie{Name: TokenCookie, Value: tokenString}
-		http.SetCookie(w, cooks)
+			tokenString, err := token.SignedString([]byte(SecretKey))
+			if err != nil {
+				m.Log.Errorf("token signed error: %w", err)
+				return
+			}
+
+			cooks = &http.Cookie{Name: TokenCookie, Value: tokenString}
+			http.SetCookie(w, cooks)
+		}
 
 		ctx := context.WithValue(r.Context(), TokenContextKey, cooks.Value)
 		r = r.WithContext(ctx)
 		next.ServeHTTP(w, r)
 	})
-}
-
-// TokenCreate создает токен JWT и возвращает его в виде куки.
-func TokenCreate() (*http.Cookie, error) {
-	var cooks *http.Cookie
-	var err error
-
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, Claims{
-		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(TokenExp)),
-		},
-	})
-
-	tokenString, err := token.SignedString([]byte(SecretKey))
-	if err != nil {
-		return nil, fmt.Errorf("token signed error: %w", err)
-	}
-
-	cooks = &http.Cookie{Name: TokenCookie, Value: tokenString}
-
-	return cooks, nil
 }

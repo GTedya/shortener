@@ -1,4 +1,3 @@
-// Package handlers предоставляет обработчики HTTP-запросов.
 package handlers
 
 import (
@@ -10,7 +9,6 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/GTedya/shortener/internal/app/middlewares"
 	"github.com/GTedya/shortener/internal/app/storage"
 	"github.com/GTedya/shortener/internal/app/storage/dbstorage"
 )
@@ -49,13 +47,7 @@ func (h *handler) createURL(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add(contentType, "text/plain; application/json")
 	shortID = uuid.NewString()
 
-	token, err := middlewares.TokenCreate()
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-	}
-	http.SetCookie(w, token)
-
-	err = h.store.SaveURL(r.Context(), token.Value, id, shortID)
+	err = h.store.SaveURL(r.Context(), id, shortID)
 
 	if errors.Is(err, dbstorage.ErrDuplicate) {
 		w.WriteHeader(http.StatusConflict)
@@ -120,13 +112,7 @@ func (h *handler) urlByJSON(w http.ResponseWriter, r *http.Request) {
 	id := u.URL
 	shortID := uuid.NewString()
 
-	token, err := middlewares.TokenCreate()
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-	}
-	http.SetCookie(w, token)
-
-	err = h.store.SaveURL(r.Context(), token.Value, id, shortID)
+	err = h.store.SaveURL(r.Context(), id, shortID)
 
 	if errors.Is(err, dbstorage.ErrDuplicate) {
 		w.WriteHeader(http.StatusConflict)

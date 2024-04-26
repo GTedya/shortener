@@ -5,20 +5,22 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/GTedya/shortener/internal/app/middlewares"
+
 	"github.com/jackc/pgx/v5"
 )
 
 // SaveURLS предоставляет методы для сохранения URL в базе данных.
 type SaveURLS interface {
 	// SaveURL сохраняет URL в базе данных и возвращает количество измененных строк.
-	SaveURL(ctx context.Context, token, id, shortID string) (int64, error)
+	SaveURL(ctx context.Context, id, shortID string) (int64, error)
 
 	// Batch выполняет пакетное сохранение URL в базе данных.
 	Batch(ctx context.Context, records map[string]string) error
 }
 
 // SaveURL сохраняет URL в базе данных и возвращает количество измененных строк.
-func (db *db) SaveURL(ctx context.Context, token, id, shortID string) (int64, error) {
+func (db *db) SaveURL(ctx context.Context, id, shortID string) (int64, error) {
 	tx, err := db.pool.Begin(ctx)
 	if err != nil {
 		return 0, fmt.Errorf("transaction start error: %w", err)
@@ -35,6 +37,7 @@ func (db *db) SaveURL(ctx context.Context, token, id, shortID string) (int64, er
 			db.log.Errorw(ErrCommitTransaction, "error", txErr)
 		}
 	}()
+	token := ctx.Value(middlewares.ContextKey("token"))
 	result, err := tx.Exec(ctx, "INSERT INTO urls (short_url, url, user_token) VALUES ($1, $2, $3)",
 		shortID, id, token)
 	if err != nil {

@@ -37,10 +37,10 @@ func (ds *DatabaseStore) GetURL(ctx context.Context, shortID string) (string, er
 }
 
 // SaveURL сохраняет полный URL и его короткую версию в базе данных.
-func (ds *DatabaseStore) SaveURL(ctx context.Context, token, id, shortID string) error {
+func (ds *DatabaseStore) SaveURL(ctx context.Context, id, shortID string) error {
 	var pgError *pgconn.PgError
 
-	rows, err := ds.DB.SaveURL(ctx, token, id, shortID)
+	rows, err := ds.DB.SaveURL(ctx, id, shortID)
 	if errors.As(err, &pgError) && pgError.Code == pgerrcode.UniqueViolation {
 		return ErrDuplicate
 	}
