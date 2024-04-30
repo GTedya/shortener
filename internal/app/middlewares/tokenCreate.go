@@ -40,6 +40,7 @@ func (m Middleware) TokenCreate(next http.Handler) http.Handler {
 				return
 			}
 			w.Header().Add("Authorization", "Bearer "+tokenString)
+			r.Header.Add("Authorization", "Bearer "+tokenString)
 		}
 		next.ServeHTTP(w, r)
 	})

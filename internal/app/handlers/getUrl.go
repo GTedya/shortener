@@ -32,7 +32,7 @@ func (h *handler) getURLByID(w http.ResponseWriter, r *http.Request) {
 
 // userUrls получает список сокращенных URL, принадлежащих текущему пользователю.
 func (h *handler) userURLS(w http.ResponseWriter, r *http.Request) {
-	token := r.Header.Get("token")
+	token := r.Header.Get("Authorization")
 	w.Header().Add(contentType, appJSON)
 
 	urls, err := h.db.UserURLS(r.Context(), token)
