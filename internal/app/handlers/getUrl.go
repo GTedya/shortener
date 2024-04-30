@@ -32,15 +32,10 @@ func (h *handler) getURLByID(w http.ResponseWriter, r *http.Request) {
 
 // userUrls получает список сокращенных URL, принадлежащих текущему пользователю.
 func (h *handler) userURLS(w http.ResponseWriter, r *http.Request) {
-	token, err := r.Cookie("token")
-	if err != nil {
-		h.log.Errorw("token receiving error", err)
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
+	token := r.Header.Get("token")
 	w.Header().Add(contentType, appJSON)
 
-	urls, err := h.db.UserURLS(r.Context(), token.Value)
+	urls, err := h.db.UserURLS(r.Context(), token)
 	if err != nil {
 		h.log.Errorw("URL getting error", err)
 		w.WriteHeader(http.StatusBadRequest)
