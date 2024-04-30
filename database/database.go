@@ -43,11 +43,19 @@ const DeleteBuffer = 10
 
 // NewDB создает новый экземпляр базы данных на основе переданных параметров.
 func NewDB(dsn string, logger *zap.SugaredLogger) (DB, error) {
+	pool, err := NewPool(dsn)
+	if err != nil {
+		return nil, fmt.Errorf("NewPool error: %w", err)
+	}
+	return &db{pool: pool, log: logger}, nil
+}
+
+func NewPool(dsn string) (*pgxpool.Pool, error) {
 	pool, err := pgxpool.New(context.Background(), dsn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create a connection pool: %w", err)
 	}
-	return &db{pool: pool, log: logger}, nil
+	return pool, nil
 }
 
 //go:embed migrations/*.sql

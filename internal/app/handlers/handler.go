@@ -34,7 +34,7 @@ type Store interface {
 	GetURL(ctx context.Context, shortID string) (string, error)
 
 	// SaveURL сохраняет URL в хранилище и связывает его с сокращенной версией.
-	SaveURL(ctx context.Context, id, shortID string) error
+	SaveURL(ctx context.Context, token, id, shortID string) error
 
 	// Batch пакетно сохраняет URL в хранилище и связывает их с сокращенными версиями.
 	Batch(ctx context.Context, urls map[string]string) error
@@ -67,7 +67,7 @@ func (h *handler) Register(router *chi.Mux, middleware middlewares.Middleware) {
 	router.Post("/api/shorten/batch", h.batch)
 
 	// Получает все сокращенные URL пользователя.
-	router.With(middleware.AuthCheck).Get("/api/user/urls", h.userUrls)
+	router.With(middleware.AuthCheck).Get("/api/user/urls", h.userURLS)
 
 	// Удаляет сокращенные URL пользователя.
 	router.With(middleware.AuthCheck).Delete("/api/user/urls", h.deleteUrls)

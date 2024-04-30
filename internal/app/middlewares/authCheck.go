@@ -9,8 +9,8 @@ import (
 // В противном случае передает запрос следующему обработчику.
 func (m Middleware) AuthCheck(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		_, err := r.Cookie("token")
-		if err != nil {
+		str := r.Header.Get("Authorization")
+		if str == "" {
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}

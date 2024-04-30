@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"fmt"
+
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -10,7 +11,6 @@ import (
 
 	"github.com/GTedya/shortener/config"
 	"github.com/GTedya/shortener/internal/app/storage"
-
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap"
@@ -66,7 +66,7 @@ func TestGetURLByID(t *testing.T) {
 			defer cancel()
 
 			h := handler{log: log, conf: conf, store: store}
-			err = h.store.SaveURL(ctx, "http://localhost:8080/testID", "testID")
+			err = h.store.SaveURL(ctx, "", "http://localhost:8080/testID", "testID")
 			if err != nil {
 				t.Log(err)
 			}
@@ -108,7 +108,7 @@ func BenchmarkGetURLByID(b *testing.B) {
 	ctx := context.TODO()
 
 	h := handler{log: log, conf: conf, store: store}
-	err = h.store.SaveURL(ctx, "http://localhost:8080/testID", "testID")
+	err = h.store.SaveURL(ctx, "", "http://localhost:8080/testID", "testID")
 	if err != nil {
 		b.Fatal(err)
 	}

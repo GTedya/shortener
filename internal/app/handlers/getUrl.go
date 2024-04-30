@@ -31,7 +31,7 @@ func (h *handler) getURLByID(w http.ResponseWriter, r *http.Request) {
 }
 
 // userUrls получает список сокращенных URL, принадлежащих текущему пользователю.
-func (h *handler) userUrls(w http.ResponseWriter, r *http.Request) {
+func (h *handler) userURLS(w http.ResponseWriter, r *http.Request) {
 	token, err := r.Cookie("token")
 	if err != nil {
 		h.log.Errorw("token receiving error", err)

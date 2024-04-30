@@ -47,7 +47,8 @@ func (h *handler) createURL(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add(contentType, "text/plain; application/json")
 	shortID = uuid.NewString()
 
-	err = h.store.SaveURL(r.Context(), id, shortID)
+	token := r.Header.Get("Authorization")
+	err = h.store.SaveURL(r.Context(), token, id, shortID)
 
 	if errors.Is(err, dbstorage.ErrDuplicate) {
 		w.WriteHeader(http.StatusConflict)
@@ -112,7 +113,8 @@ func (h *handler) urlByJSON(w http.ResponseWriter, r *http.Request) {
 	id := u.URL
 	shortID := uuid.NewString()
 
-	err = h.store.SaveURL(r.Context(), id, shortID)
+	token := r.Header.Get("Authorization")
+	err = h.store.SaveURL(r.Context(), token, id, shortID)
 
 	if errors.Is(err, dbstorage.ErrDuplicate) {
 		w.WriteHeader(http.StatusConflict)
