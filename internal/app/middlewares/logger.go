@@ -10,7 +10,8 @@ import (
 
 // Middleware представляет middleware для логирования HTTP-запросов.
 type Middleware struct {
-	Log *zap.SugaredLogger
+	Log       *zap.SugaredLogger
+	SecretKey string
 }
 
 // loggerWriter представляет структуру для перехвата записи в ответ.

@@ -22,7 +22,7 @@ func Start(conf config.Config, log *zap.SugaredLogger, db database.DB) error {
 	router := chi.NewRouter()
 
 	// Создание экземпляра посредников.
-	middleware := middlewares.Middleware{Log: log}
+	middleware := middlewares.Middleware{Log: log, SecretKey: conf.SecretKEY}
 
 	// Использование посредников для обработки логов, сжатия gzip и декомпрессии gzip.
 	router.Use(middleware.LogHandle, middleware.GzipCompressHandle, middleware.GzipDecompressMiddleware)
