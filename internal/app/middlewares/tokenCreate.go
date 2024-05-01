@@ -37,8 +37,8 @@ func (m Middleware) TokenCreate(next http.Handler) http.Handler {
 			m.Log.Errorf("token signed error: %w", err)
 			return
 		}
-		w.Header().Add("Authorization", "Bearer "+tokenString)
-		r.Header.Add("Authorization", "Bearer "+tokenString)
+		w.Header().Set("Authorization", "Bearer "+tokenString)
+		r.Header.Set("Authorization", "Bearer "+tokenString)
 
 		next.ServeHTTP(w, r)
 	})
