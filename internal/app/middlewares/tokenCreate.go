@@ -26,22 +26,20 @@ const (
 // Созданный токен добавляется в куку и сохраняется в контексте запроса.
 func (m Middleware) TokenCreate(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		auth := r.Header.Get("Authorization")
-		if auth == "" {
-			token := jwt.NewWithClaims(jwt.SigningMethodHS256, Claims{
-				RegisteredClaims: jwt.RegisteredClaims{
-					ExpiresAt: jwt.NewNumericDate(time.Now().Add(TokenExp)),
-				},
-			})
+		token := jwt.NewWithClaims(jwt.SigningMethodHS256, Claims{
+			RegisteredClaims: jwt.RegisteredClaims{
+				ExpiresAt: jwt.NewNumericDate(time.Now().Add(TokenExp)),
+			},
+		})
 
-			tokenString, err := token.SignedString([]byte(SecretKey))
-			if err != nil {
-				m.Log.Errorf("token signed error: %w", err)
-				return
-			}
-			w.Header().Add("Authorization", "Bearer "+tokenString)
-			r.Header.Add("Authorization", "Bearer "+tokenString)
+		tokenString, err := token.SignedString([]byte(SecretKey))
+		if err != nil {
+			m.Log.Errorf("token signed error: %w", err)
+			return
 		}
+		w.Header().Add("Authorization", "Bearer "+tokenString)
+		r.Header.Add("Authorization", "Bearer "+tokenString)
+
 		next.ServeHTTP(w, r)
 	})
 }
