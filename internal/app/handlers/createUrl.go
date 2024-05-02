@@ -11,6 +11,7 @@ import (
 
 	"github.com/GTedya/shortener/internal/app/storage"
 	"github.com/GTedya/shortener/internal/app/storage/dbstorage"
+	"github.com/GTedya/shortener/internal/app/tokenutils"
 )
 
 // errResponseWrite представляет ошибку записи данных.
@@ -47,8 +48,8 @@ func (h *handler) createURL(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add(contentType, "text/plain; application/json")
 	shortID = uuid.NewString()
 
-	token := r.Header.Get("Authorization")
-	err = h.store.SaveURL(r.Context(), token, id, shortID)
+	userID := tokenutils.GetUserID(r)
+	err = h.store.SaveURL(r.Context(), userID, id, shortID)
 
 	if errors.Is(err, dbstorage.ErrDuplicate) {
 		w.WriteHeader(http.StatusConflict)
@@ -70,6 +71,10 @@ func (h *handler) createURL(w http.ResponseWriter, r *http.Request) {
 		h.log.Errorw("data saving error", err)
 		w.WriteHeader(http.StatusBadRequest)
 		return
+	}
+
+	if err = tokenutils.AddEncryptedUserIDToCookie(&w, userID); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 
 	w.WriteHeader(http.StatusCreated)

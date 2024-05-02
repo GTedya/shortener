@@ -12,7 +12,7 @@ type Config struct {
 	URL             string // Базовый URL для сокращенных ссылок.
 	FileStoragePath string // Путь к файловому хранилищу.
 	DatabaseDSN     string // DSN для подключения к базе данных.
-	SecretKEY       string //секретный клюя для токена
+	SecretKEY       string // Секретный клюя для токена
 }
 
 // GetConfig получает конфигурацию из флагов командной строки и окружения.

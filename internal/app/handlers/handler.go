@@ -52,13 +52,13 @@ func NewHandler(logger *zap.SugaredLogger, conf config.Config, db database.DB) (
 // Register регистрирует обработчики маршрутов HTTP в маршрутизаторе chi.
 func (h *handler) Register(router *chi.Mux, middleware middlewares.Middleware) {
 	// Создает сокращенный URL.
-	router.With(middleware.TokenCreate).Post("/", h.createURL)
+	router.Post("/", h.createURL)
 
 	// Получает оригинальный URL по его сокращенной версии.
 	router.Get("/{id}", h.getURLByID)
 
 	// Создает сокращенный URL из JSON-данных.
-	router.With(middleware.TokenCreate).Post("/api/shorten", h.urlByJSON)
+	router.Post("/api/shorten", h.urlByJSON)
 
 	// Проверяет доступность сервера.
 	router.Get("/ping", h.getPing)
