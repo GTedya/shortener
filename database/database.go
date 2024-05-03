@@ -50,6 +50,8 @@ func NewDB(dsn string, logger *zap.SugaredLogger) (DB, error) {
 	return &db{pool: pool, log: logger}, nil
 }
 
+// NewPool создает и возвращает новый пул соединений с базой данных PostgreSQL.
+// Он использует переданную строку подключения (DSN) для создания пула соединений.
 func NewPool(dsn string) (*pgxpool.Pool, error) {
 	pool, err := pgxpool.New(context.Background(), dsn)
 	if err != nil {

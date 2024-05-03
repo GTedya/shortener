@@ -3,9 +3,10 @@ package handlers
 import (
 	"context"
 	"encoding/json"
-	"github.com/GTedya/shortener/internal/app/tokenutils"
 	"io"
 	"net/http"
+
+	"github.com/GTedya/shortener/internal/app/tokenutils"
 )
 
 // deleteUrls обрабатывает запрос на удаление сокращенных URL, принадлежащих пользователю.
