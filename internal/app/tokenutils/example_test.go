@@ -4,8 +4,8 @@ import (
 	"fmt"
 )
 
-// ExampleEncryptDecrypt demonstrates how to use the Encrypt and Decrypt functions.
-func ExampleEncryptDecrypt() {
+// ExampleDecrypt demonstrates how to use the Encrypt and Decrypt functions.
+func ExampleDecrypt() {
 	// Encrypt a user ID
 	encryptedUserID, err := Encrypt("userID", "abc&1*~#^2^#s0^=)^^7%b34")
 	if err != nil {
