@@ -74,7 +74,7 @@ func RunMigrations(dsn string) error {
 	if err != nil {
 		return fmt.Errorf("failed to get a new migrate instance: %w", err)
 	}
-	if err := m.Up(); err != nil {
+	if err = m.Up(); err != nil {
 		if !errors.Is(err, migrate.ErrNoChange) {
 			return fmt.Errorf("failed to apply migrations to the DB: %w", err)
 		}

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	_ "net/http/pprof"
 
 	"github.com/GTedya/shortener/database"
@@ -10,9 +11,20 @@ import (
 	"github.com/GTedya/shortener/internal/app/server"
 )
 
+var (
+	buildVersion = "N/A" //nolint:gochecknoglobals
+	buildDate    = "N/A" //nolint:gochecknoglobals
+	buildCommit  = "N/A" //nolint:gochecknoglobals
+)
+
 // main - основная функция, которая инициализирует конфигурацию, логгер, базу данных,
 // запускает миграции и запускает сервер.
 func main() {
+	// Print environment flags
+	fmt.Printf("Build version: %s\n", buildVersion)
+	fmt.Printf("Build date: %s\n", buildDate)
+	fmt.Printf("Build commit: %s\n", buildCommit)
+
 	// Получение конфигурации из файла конфигурации.
 	conf := config.GetConfig()
 	// Создание логгера.

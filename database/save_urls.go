@@ -2,8 +2,8 @@ package database
 
 import (
 	"context"
-	"errors"
 	"fmt"
+	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/jackc/pgx/v5"
 )
@@ -24,23 +24,28 @@ func (db *db) SaveURL(ctx context.Context, token, id, shortID string) (int64, er
 		return 0, fmt.Errorf("transaction start error: %w", err)
 	}
 
+	var txCommitted bool
+	var result pgconn.CommandTag
+
 	defer func() {
-		if err != nil {
+		if !txCommitted {
 			if txErr := tx.Rollback(ctx); txErr != nil {
 				db.log.Error("transaction rollback error: ", txErr)
-				return
 			}
 		}
-		if txErr := tx.Commit(ctx); txErr != nil && !errors.Is(txErr, pgx.ErrTxClosed) {
-			db.log.Errorw(ErrCommitTransaction, "error", txErr)
-		}
 	}()
+
 	db.log.Info(shortID, id, "123"+token)
-	result, err := tx.Exec(ctx, "INSERT INTO urls (short_url, url, user_token) VALUES ($1, $2, $3)",
-		shortID, id, token)
+	result, err = tx.Exec(ctx, "INSERT INTO urls (short_url, url, user_token) VALUES ($1, $2, $3)", shortID, id, token)
 	if err != nil {
 		return 0, fmt.Errorf("saving url execution error: %w", err)
 	}
+
+	// Commit the transaction if everything went well
+	if err := tx.Commit(ctx); err != nil {
+		return 0, fmt.Errorf("commit transaction error: %w", err)
+	}
+	txCommitted = true
 
 	rows := result.RowsAffected()
 	return rows, nil
@@ -53,15 +58,13 @@ func (db *db) Batch(ctx context.Context, records map[string]string) error {
 		return fmt.Errorf("transaction error: %w", err)
 	}
 
+	var txCommitted bool
+
 	defer func() {
-		if err != nil {
+		if !txCommitted {
 			if txErr := tx.Rollback(ctx); txErr != nil {
 				db.log.Error("transaction rollback error: ", txErr)
-				return
 			}
-		}
-		if txErr := tx.Commit(ctx); txErr != nil && !errors.Is(txErr, pgx.ErrTxClosed) {
-			db.log.Errorw(ErrCommitTransaction, "err", txErr)
 		}
 	}()
 
@@ -77,6 +80,7 @@ func (db *db) Batch(ctx context.Context, records map[string]string) error {
 	if err != nil {
 		return fmt.Errorf("batch closing error: %w", err)
 	}
+	txCommitted = true
 
 	return nil
 }
