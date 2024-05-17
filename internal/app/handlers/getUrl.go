@@ -8,8 +8,10 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"github.com/GTedya/shortener/internal/app/storage/dbstorage"
+	"github.com/GTedya/shortener/internal/app/tokenutils"
 )
 
+// getURLByID получает оригинальный URL по его сокращенной версии.
 func (h *handler) getURLByID(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 
@@ -29,16 +31,12 @@ func (h *handler) getURLByID(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, shortenURL, http.StatusTemporaryRedirect)
 }
 
-func (h *handler) userUrls(w http.ResponseWriter, r *http.Request) {
-	token, err := r.Cookie("token")
-	if err != nil {
-		h.log.Errorw("token receiving error", err)
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
+// userUrls получает список сокращенных URL, принадлежащих текущему пользователю.
+func (h *handler) userURLS(w http.ResponseWriter, r *http.Request) {
+	userID := tokenutils.GetUserID(r)
 	w.Header().Add(contentType, appJSON)
 
-	urls, err := h.db.UserURLS(r.Context(), token.Value)
+	urls, err := h.db.UserURLS(r.Context(), userID)
 	if err != nil {
 		h.log.Errorw("URL getting error", err)
 		w.WriteHeader(http.StatusBadRequest)

@@ -5,15 +5,13 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+
+	"github.com/GTedya/shortener/internal/app/tokenutils"
 )
 
+// deleteUrls обрабатывает запрос на удаление сокращенных URL, принадлежащих пользователю.
 func (h *handler) deleteUrls(w http.ResponseWriter, r *http.Request) {
-	token, err := r.Cookie("token")
-	if err != nil {
-		h.log.Errorw("token receiving error", err)
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
+	token := tokenutils.GetUserID(r)
 
 	var shortURLs []string
 	body, err := io.ReadAll(r.Body)
@@ -35,7 +33,7 @@ func (h *handler) deleteUrls(w http.ResponseWriter, r *http.Request) {
 	ctx := context.Background()
 	gen := generator(ctx, shortURLs)
 
-	err = h.db.DeleteURLS(ctx, token.Value, gen)
+	err = h.db.DeleteURLS(ctx, token, gen)
 	if err != nil {
 		h.log.Errorw("User deleting error", err)
 		return

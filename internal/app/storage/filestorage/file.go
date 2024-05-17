@@ -10,12 +10,15 @@ import (
 	"github.com/GTedya/shortener/internal/helpers"
 )
 
+// writingPermission устанавливает права доступа для записи в файл.
 const writingPermission = 0600
 
+// FileStore представляет хранилище данных в файле.
 type FileStore struct {
-	Memory inmemory.MemoryStore
+	Memory inmemory.MemoryStore // Memory содержит ссылку на хранилище в памяти.
 }
 
+// GetURL возвращает полный URL по его короткой версии из хранилища в файле.
 func (fs *FileStore) GetURL(ctx context.Context, shortID string) (string, error) {
 	url, err := fs.Memory.GetURL(ctx, shortID)
 	if err != nil {
@@ -24,8 +27,9 @@ func (fs *FileStore) GetURL(ctx context.Context, shortID string) (string, error)
 	return url, nil
 }
 
-func (fs *FileStore) SaveURL(ctx context.Context, id, shortID string) error {
-	err := fs.Memory.SaveURL(ctx, id, shortID)
+// SaveURL сохраняет полный URL и его короткую версию в хранилище в файле.
+func (fs *FileStore) SaveURL(ctx context.Context, _, id, shortID string) error {
+	err := fs.Memory.SaveURL(ctx, "", id, shortID)
 	if err != nil {
 		return fmt.Errorf("memory store error: %w", err)
 	}
@@ -63,6 +67,7 @@ func (fs *FileStore) SaveURL(ctx context.Context, id, shortID string) error {
 	return nil
 }
 
+// Batch добавляет короткие URL в хранилище в файле.
 func (fs *FileStore) Batch(ctx context.Context, urls map[string]string) error {
 	err := fs.Memory.Batch(ctx, urls)
 	if err != nil {

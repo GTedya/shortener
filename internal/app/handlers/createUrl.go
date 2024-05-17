@@ -7,13 +7,30 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/google/uuid"
+
 	"github.com/GTedya/shortener/internal/app/storage"
 	"github.com/GTedya/shortener/internal/app/storage/dbstorage"
+	"github.com/GTedya/shortener/internal/app/tokenutils"
 )
 
+// errResponseWrite представляет ошибку записи данных.
 var errResponseWrite = errors.New("data writing error")
+
+// errJSONMarshal представляет ошибку маршалинга JSON.
 var errJSONMarshal = errors.New("json marshalling error")
 
+// URL представляет структуру для хранения URL.
+type URL struct {
+	URL string `json:"url"`
+}
+
+// ShortURL представляет структуру для хранения сокращенного URL.
+type ShortURL struct {
+	URL string `json:"result"`
+}
+
+// createURL обрабатывает запрос на создание сокращенного URL.
 func (h *handler) createURL(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -21,6 +38,7 @@ func (h *handler) createURL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if len(body) == 0 {
+		h.log.Debug("empty request body")
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -28,9 +46,10 @@ func (h *handler) createURL(w http.ResponseWriter, r *http.Request) {
 
 	id := string(body)
 	w.Header().Add(contentType, "text/plain; application/json")
-	shortID = createUniqueID(r.Context(), h.store.GetURL, urlLen)
+	shortID = uuid.NewString()
 
-	err = h.store.SaveURL(r.Context(), id, shortID)
+	userID := tokenutils.GetUserID(r)
+	err = h.store.SaveURL(r.Context(), userID, id, shortID)
 
 	if errors.Is(err, dbstorage.ErrDuplicate) {
 		w.WriteHeader(http.StatusConflict)
@@ -54,8 +73,11 @@ func (h *handler) createURL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if err = tokenutils.AddEncryptedUserIDToCookie(&w, userID); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+
 	w.WriteHeader(http.StatusCreated)
-	h.log.Debug(shortID)
 
 	if _, err = w.Write([]byte(fmt.Sprintf("%s/%s", h.conf.URL, shortID))); err != nil {
 		h.log.Error(errResponseWrite)
@@ -64,6 +86,7 @@ func (h *handler) createURL(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// urlByJSON обрабатывает запрос на создание сокращенного URL, переданный в формате JSON.
 func (h *handler) urlByJSON(w http.ResponseWriter, r *http.Request) {
 	content := r.Header.Get(contentType)
 	if content != appJSON {
@@ -77,6 +100,7 @@ func (h *handler) urlByJSON(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if len(body) == 0 {
+		h.log.Debug("empty request body")
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -92,9 +116,10 @@ func (h *handler) urlByJSON(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := u.URL
-	shortID := createUniqueID(r.Context(), h.store.GetURL, urlLen)
+	shortID := uuid.NewString()
 
-	err = h.store.SaveURL(r.Context(), id, shortID)
+	token := r.Header.Get("Authorization")
+	err = h.store.SaveURL(r.Context(), token, id, shortID)
 
 	if errors.Is(err, dbstorage.ErrDuplicate) {
 		w.WriteHeader(http.StatusConflict)
@@ -142,6 +167,7 @@ func (h *handler) urlByJSON(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// batch обрабатывает запрос на пакетное создание сокращенных URL.
 func (h *handler) batch(w http.ResponseWriter, r *http.Request) {
 	content := r.Header.Get(contentType)
 	if content != appJSON {
@@ -173,7 +199,7 @@ func (h *handler) batch(w http.ResponseWriter, r *http.Request) {
 		if len(url.OriginalURL) == 0 {
 			break
 		}
-		shortID := createUniqueID(r.Context(), h.store.GetURL, urlLen)
+		shortID := uuid.NewString()
 		res := storage.ResMultipleURL{CorrelationID: url.CorrelationID,
 			ShortURL: fmt.Sprintf("http://%s/%s", h.conf.Address, shortID)}
 
