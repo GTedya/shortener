@@ -74,12 +74,16 @@ func (db *db) Batch(ctx context.Context, records map[string]string) error {
 		sqlStatement := "INSERT INTO urls (url,short_url) VALUES ($1, $2)"
 		b.Queue(sqlStatement, id, subID)
 	}
-
-	batchResults := tx.SendBatch(ctx, b)
-	err = batchResults.Close()
+	err = tx.SendBatch(ctx, b).Close()
 	if err != nil {
-		return fmt.Errorf("batch closing error: %w", err)
+		return fmt.Errorf("SendBatch error: %w", err)
 	}
+
+	// Commit the transaction if everything went well
+	if err = tx.Commit(ctx); err != nil {
+		return fmt.Errorf("commit transaction error: %w", err)
+	}
+
 	txCommitted = true
 
 	return nil
