@@ -12,9 +12,9 @@ import (
 )
 
 var (
-	buildVersion = "N/A" //nolint:gochecknoglobals
-	buildDate    = "N/A" //nolint:gochecknoglobals
-	buildCommit  = "N/A" //nolint:gochecknoglobals
+	buildVersion = "N/A"
+	buildDate    = "N/A"
+	buildCommit  = "N/A"
 )
 
 // main - основная функция, которая инициализирует конфигурацию, логгер, базу данных,

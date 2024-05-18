@@ -3,9 +3,9 @@ package database
 import (
 	"context"
 	"fmt"
-	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 // SaveURLS предоставляет методы для сохранения URL в базе данных.

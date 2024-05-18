@@ -15,7 +15,6 @@ var ErrExitMainCheckAnalyzer = &analysis.Analyzer{
 
 func run(pass *analysis.Pass) (interface{}, error) {
 	for _, file := range pass.Files {
-
 		// tests are generating build cache that has main package, ignoring such files
 		if fullPath := pass.Fset.Position(file.Pos()).String(); strings.Contains(fullPath, "go-build") {
 			continue
@@ -47,7 +46,10 @@ func run(pass *analysis.Pass) (interface{}, error) {
 				}
 
 				if s.Sel.Name == "Exit" {
-					ident := s.X.(*ast.Ident)
+					ident, isIdent := s.X.(*ast.Ident)
+					if !isIdent {
+						return true
+					}
 					if ident.Name == "os" {
 						pass.Reportf(s.Pos(), "exit call in main function")
 					}
@@ -55,10 +57,8 @@ func run(pass *analysis.Pass) (interface{}, error) {
 
 				return false
 			})
-
 			return false
 		})
 	}
-
-	return nil, nil //nolint:nil nil
+	return nil, nil //nolint:all //Execution of nillint linter is triggered
 }
