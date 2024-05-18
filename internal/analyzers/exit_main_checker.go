@@ -1,3 +1,4 @@
+// Package analyzers provides static analysis for Go code.
 package analyzers
 
 import (
@@ -7,15 +8,19 @@ import (
 	"golang.org/x/tools/go/analysis"
 )
 
+// ErrExitMainCheckAnalyzer is an analyzer that checks for calls to os.Exit in the main function of the main package.
 var ErrExitMainCheckAnalyzer = &analysis.Analyzer{
 	Name: "exitmaincheck",
 	Doc:  "check call os.Exit in func main() of package main",
 	Run:  run,
 }
 
+// run is the function that performs the analysis. It iterates over the files in the pass, checks if the package
+// is the main package, and inspects the main function for calls to os.Exit. If such a call is found, it reports it.
 func run(pass *analysis.Pass) (interface{}, error) {
 	for _, file := range pass.Files {
 		// tests are generating build cache that has main package, ignoring such files
+
 		if fullPath := pass.Fset.Position(file.Pos()).String(); strings.Contains(fullPath, "go-build") {
 			continue
 		}
