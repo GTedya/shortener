@@ -23,3 +23,10 @@ vendor/
 .idea
 .vscode
 golangci-lint
+
+#https keys
+key.pem
+cert.pem
+
+# queries
+queries
