@@ -35,14 +35,13 @@ func (db *db) SaveURL(ctx context.Context, token, id, shortID string) (int64, er
 		}
 	}()
 
-	db.log.Info(shortID, id, "123"+token)
 	result, err = tx.Exec(ctx, "INSERT INTO urls (short_url, url, user_token) VALUES ($1, $2, $3)", shortID, id, token)
 	if err != nil {
 		return 0, fmt.Errorf("saving url execution error: %w", err)
 	}
 
 	// Commit the transaction if everything went well
-	if err := tx.Commit(ctx); err != nil {
+	if err = tx.Commit(ctx); err != nil {
 		return 0, fmt.Errorf("commit transaction error: %w", err)
 	}
 	txCommitted = true
