@@ -72,7 +72,6 @@ func GetConfig() (c Config) {
 // "CONFIG". If the file path is found, it reads the file and unmarshals
 // its content into the Config struct.
 func (c *Config) getConfigFromJSON(path string) {
-
 	flag.Parse()
 
 	filePath, ok := os.LookupEnv("CONFIG")
