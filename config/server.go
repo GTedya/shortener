@@ -3,6 +3,7 @@ package config
 
 import (
 	"encoding/json"
+	"errors"
 	"flag"
 	"os"
 	"strconv"
@@ -21,8 +22,9 @@ type Config struct {
 
 // GetConfig получает конфигурацию из флагов командной строки и окружения.
 func GetConfig() (c Config) {
-	c.getConfigFromJSON()
+	var path string
 
+	flag.StringVar(&path, "config", "", "server config file path")
 	flag.StringVar(&c.Address, "a", "localhost:8080", "address and port to run server")
 	flag.StringVar(&c.URL, "b", "http://localhost:8080", "basic shorten URL")
 	flag.StringVar(&c.DatabaseDSN, "d", "", "database dsn")
@@ -30,6 +32,8 @@ func GetConfig() (c Config) {
 	flag.StringVar(&c.SecretKey, "sk", "secret_key", "secret key")
 	flag.BoolVar(&c.EnableHTTPS, "s", false, "enable HTTPS on server")
 	flag.Parse()
+
+	c.getConfigFromJSON(path)
 
 	serverAddress, ok := os.LookupEnv("SERVER_ADDRESS")
 	if ok {
@@ -67,10 +71,8 @@ func GetConfig() (c Config) {
 // the configuration file path. If not, it checks the environment variable
 // "CONFIG". If the file path is found, it reads the file and unmarshals
 // its content into the Config struct.
-func (c *Config) getConfigFromJSON() {
-	var path string
+func (c *Config) getConfigFromJSON(path string) {
 
-	flag.StringVar(&path, "config", "", "server config file path")
 	flag.Parse()
 
 	filePath, ok := os.LookupEnv("CONFIG")
@@ -78,8 +80,12 @@ func (c *Config) getConfigFromJSON() {
 		path = filePath
 	}
 
+	if path == "" {
+		return
+	}
+
 	file, err := os.ReadFile(path)
-	if err != nil {
+	if errors.Is(err, os.ErrNotExist) {
 		return
 	}
 
