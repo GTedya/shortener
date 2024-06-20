@@ -12,7 +12,7 @@ type Config struct {
 	URL             string // Базовый URL для сокращенных ссылок.
 	FileStoragePath string // Путь к файловому хранилищу.
 	DatabaseDSN     string // DSN для подключения к базе данных.
-	SecretKEY       string // Секретный клюя для токена
+	SecretKey       string // Секретный клюя для токена
 }
 
 // GetConfig получает конфигурацию из флагов командной строки и окружения.
@@ -21,7 +21,7 @@ func GetConfig() (c Config) {
 	flag.StringVar(&c.URL, "b", "http://localhost:8080", "basic shorten URL")
 	flag.StringVar(&c.DatabaseDSN, "d", "", "database dsn")
 	flag.StringVar(&c.FileStoragePath, "f", "/tmp/short-url-database.json", "file storage path")
-	flag.StringVar(&c.SecretKEY, "s", "secret_key", "secret key")
+	flag.StringVar(&c.SecretKey, "s", "secret_key", "secret key")
 	flag.Parse()
 
 	serverAddress, ok := os.LookupEnv("SERVER_ADDRESS")

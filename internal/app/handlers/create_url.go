@@ -74,7 +74,9 @@ func (h *handler) createURL(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err = tokenutils.AddEncryptedUserIDToCookie(&w, userID); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		h.log.Errorw("adding cookie error", err)
+		w.WriteHeader(http.StatusBadRequest)
+		return
 	}
 
 	w.WriteHeader(http.StatusCreated)
