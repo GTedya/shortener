@@ -25,7 +25,7 @@ func GetConfig() (c Config) {
 
 	flag.StringVar(&c.Address, "a", "localhost:8080", "address and port to run server")
 	flag.StringVar(&c.URL, "b", "http://localhost:8080", "basic shorten URL")
-	flag.StringVar(&c.DatabaseDSN, "d", "postgres://root:root@localhost:5432/shortener?sslmode=disable", "database dsn")
+	flag.StringVar(&c.DatabaseDSN, "d", "", "database dsn")
 	flag.StringVar(&c.FileStoragePath, "f", "/tmp/short-url-database.json", "file storage path")
 	flag.StringVar(&c.SecretKey, "sk", "secret_key", "secret key")
 	flag.BoolVar(&c.EnableHTTPS, "s", false, "enable HTTPS on server")
