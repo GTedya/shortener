@@ -8,9 +8,9 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/GTedya/shortener/config"
-	"github.com/GTedya/shortener/database"
 	"github.com/GTedya/shortener/internal/app/handlers"
 	"github.com/GTedya/shortener/internal/app/middlewares"
 
@@ -20,27 +20,17 @@ import (
 	"go.uber.org/zap"
 )
 
+var timeout = 5 * time.Second
+
 // Start запускает HTTP-сервер для обслуживания запросов.
-// Принимает конфигурацию сервера, логгер и экземпляр базы данных.
 // Возвращает ошибку, если сервер не удалось запустить.
-func Start(conf config.Config, log *zap.SugaredLogger, db database.DB) error {
-	// Создание нового маршрутизатора Chi.
-	router := chi.NewRouter()
-
-	// Создание экземпляра посредников.
-	middle := middlewares.Middleware{Log: log, SecretKey: conf.SecretKey}
-
+func Start(conf config.Config, log *zap.SugaredLogger, router *chi.Mux,
+	handler handlers.Handler, middle middlewares.Middleware) error {
 	// Использование посредников для обработки логов, сжатия gzip и декомпрессии gzip.
 	router.Use(middle.LogHandle, middle.GzipCompressHandle, middle.GzipDecompressMiddleware)
 
 	// Регистрация профилировщика Chi для мониторинга и отладки.
 	router.Mount("/debug", chiMiddleware.Profiler())
-
-	// Создание нового обработчика запросов.
-	handler, err := handlers.NewHandler(log, conf, db)
-	if err != nil {
-		return fmt.Errorf("handler creation error: %w", err)
-	}
 
 	// Регистрация обработчика запросов.
 	handler.Register(router, middle)
@@ -59,7 +49,7 @@ func Start(conf config.Config, log *zap.SugaredLogger, db database.DB) error {
 	}
 
 	// Запуск HTTP-сервера.
-	if err = srv.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
+	if err := srv.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
 		return fmt.Errorf("server serving error: %w", err)
 	}
 
@@ -79,10 +69,11 @@ func Start(conf config.Config, log *zap.SugaredLogger, db database.DB) error {
 //   - idleConnsClosed: A channel to signal that all connections are closed.
 func handleShutdown(sigs chan os.Signal, srv *http.Server, log *zap.SugaredLogger, idleConnsClosed chan struct{}) {
 	<-sigs
-	if errs := srv.Shutdown(context.Background()); errs != nil {
-		log.Errorw("HTTP server Shutdown: %v", errs)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	if err := srv.Shutdown(ctx); err != nil {
+		log.Errorw("HTTP server Shutdown", "error", err)
 	}
-	log.Debug("Shutting down HTTP server")
 	close(idleConnsClosed)
 }
 

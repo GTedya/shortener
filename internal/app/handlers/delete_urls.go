@@ -1,11 +1,11 @@
 package handlers
 
 import (
-	"context"
 	"encoding/json"
 	"io"
 	"net/http"
 
+	"github.com/GTedya/shortener/internal/app/models"
 	"github.com/GTedya/shortener/internal/app/tokenutils"
 )
 
@@ -26,32 +26,26 @@ func (h *handler) deleteUrls(w http.ResponseWriter, r *http.Request) {
 	err = json.Unmarshal(body, &shortURLs)
 	if err != nil {
 		h.log.Errorw("JSON unmarshalling error", err)
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	w.WriteHeader(http.StatusAccepted)
 
-	ctx := context.Background()
-	gen := generator(ctx, shortURLs)
+	ctx := r.Context()
 
-	err = h.db.DeleteURLS(ctx, token, gen)
+	urls := make([]models.ShortURL, 0)
+
+	for _, shortURL := range shortURLs {
+		urls = append(urls, models.ShortURL{
+			ShortURL:    shortURL,
+			CreatedByID: token,
+		})
+	}
+
+	err = h.repo.DeleteUrls(ctx, urls)
 	if err != nil {
 		h.log.Errorw("User deleting error", err)
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-}
-
-func generator(ctx context.Context, input []string) chan string {
-	inputCh := make(chan string)
-	go func() {
-		defer close(inputCh)
-
-		for _, data := range input {
-			select {
-			case <-ctx.Done():
-				return
-			case inputCh <- data:
-			}
-		}
-	}()
-	return inputCh
 }

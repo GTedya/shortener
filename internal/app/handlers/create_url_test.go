@@ -1,102 +1,67 @@
 package handlers
 
 import (
+	"bytes"
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
+	"github.com/golang/mock/gomock"
+	"github.com/stretchr/testify/assert"
+	"go.uber.org/zap"
+
 	"github.com/GTedya/shortener/config"
 	"github.com/GTedya/shortener/internal/app/logger"
-	"github.com/GTedya/shortener/internal/app/storage"
-
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	"go.uber.org/zap"
+	mock_repo "github.com/GTedya/shortener/internal/app/mocks"
 )
 
-func TestCreateURL(t *testing.T) {
-	conf := config.Config{Address: "localhost:8080", URL: "short"}
+func TestHandler_createURL(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
 
-	type args struct {
-		url         string
-		method      string
-		body        io.Reader
-		contentType string
-	}
-
-	type want struct {
-		code        int
-		contentType string
-	}
-	tests := []struct {
-		name string
-		args args
-		want want
-	}{
-		{
-			name: "positive test #1",
-			want: want{
-				code:        201,
-				contentType: "text/plain; application/json",
-			},
-			args: args{
-				url:         "/",
-				method:      http.MethodPost,
-				body:        strings.NewReader(`https://yandex.ru`),
-				contentType: "text/plain; charset=utf-8; application/json",
-			},
+	mockRepo := mock_repo.NewMockRepository(ctrl)
+	h := &handler{
+		repo: mockRepo,
+		log:  zap.S(),
+		conf: config.Config{
+			URL: "http://localhost:8080",
 		},
 	}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			request := httptest.NewRequest(test.args.method, test.args.url, test.args.body)
-			request.Header.Add("Content-Type", test.args.contentType)
 
-			w := httptest.NewRecorder()
-			log := logger.CreateLogger()
+	t.Run("empty request body", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodPost, "/", nil)
+		rr := httptest.NewRecorder()
 
-			store, err := storage.NewStore(conf, nil)
-			if err != nil {
-				t.Log(err)
-			}
+		h.createURL(rr, req)
 
-			h := &handler{log: log, conf: conf, store: store}
-			h.createURL(w, request)
+		assert.Equal(t, http.StatusBadRequest, rr.Code)
+	})
 
-			res := w.Result()
+	t.Run("successful creation", func(t *testing.T) {
+		originalURL := "http://example.com"
 
-			assert.Equal(t, test.want.code, res.StatusCode)
+		mockRepo.EXPECT().Save(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 
-			defer func() {
-				err := res.Body.Close()
-				if err != nil {
-					t.Log(fmt.Errorf("response body closing error: %w", err))
-				}
-			}()
+		req := httptest.NewRequest(http.MethodPost, "/", bytes.NewReader([]byte(originalURL)))
+		rr := httptest.NewRecorder()
 
-			resBody, err := io.ReadAll(res.Body)
-			require.NotEmpty(t, resBody)
+		h.createURL(rr, req)
 
-			require.NoError(t, err)
-
-			assert.Equal(t, test.want.contentType, res.Header.Get("Content-Type"))
-		})
-	}
+		assert.Equal(t, http.StatusCreated, rr.Code)
+		assert.NotEmpty(t, rr.Body.String())
+	})
 }
 
 func BenchmarkCreateURL(b *testing.B) {
 	conf := config.Config{Address: "localhost:8080", URL: "short"}
 	log := logger.CreateLogger()
-	store, err := storage.NewStore(conf, nil)
-	if err != nil {
-		b.Fatal(err)
-	}
+	ctrl := gomock.NewController(b)
+	mockRepo := mock_repo.NewMockRepository(ctrl)
 
-	h := &handler{log: log, conf: conf, store: store}
+	h := &handler{log: log, conf: conf, repo: mockRepo}
 
 	request := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(`https://example.com`))
 	request.Header.Add("Content-Type", "text/plain; charset=utf-8; application/json")
@@ -104,6 +69,9 @@ func BenchmarkCreateURL(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		request.Body = io.NopCloser(strings.NewReader("example body"))
+
+		mockRepo.EXPECT().Save(gomock.Any(), gomock.Any()).Return(nil)
+
 		h.createURL(w, request)
 
 		if w.Code != http.StatusCreated {
@@ -113,14 +81,17 @@ func BenchmarkCreateURL(b *testing.B) {
 }
 
 func TestJsonHandler(t *testing.T) {
-	conf := config.Config{Address: "localhost:8080", URL: "short"}
-	log := logger.CreateLogger()
-	store, err := storage.NewStore(conf, nil)
-	if err != nil {
-		t.Log(err)
-	}
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
 
-	h := &handler{log: log, conf: conf, store: store}
+	mockRepo := mock_repo.NewMockRepository(ctrl)
+	h := &handler{
+		repo: mockRepo,
+		log:  zap.S(),
+		conf: config.Config{
+			URL: "http://localhost:8080",
+		},
+	}
 
 	// Test cases
 	tests := []struct {
@@ -151,6 +122,9 @@ func TestJsonHandler(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
+			if test.contentType == "application/json" && test.body != "" {
+				mockRepo.EXPECT().Save(gomock.Any(), gomock.Any()).Return(nil).Times(1)
+			}
 			request := httptest.NewRequest(http.MethodPost, "http://localhost:8080/api/shorten/", strings.NewReader(test.body))
 			request.Header.Add("Content-Type", test.contentType)
 
@@ -166,12 +140,10 @@ func BenchmarkUrlByJSON(b *testing.B) {
 	conf := config.Config{Address: "localhost:8080", URL: "short"}
 	log := zap.S()
 
-	store, err := storage.NewStore(conf, nil)
-	if err != nil {
-		b.Fatal(err)
-	}
+	ctrl := gomock.NewController(b)
+	mockRepo := mock_repo.NewMockRepository(ctrl)
 
-	h := &handler{log: log, conf: conf, store: store}
+	h := &handler{log: log, conf: conf, repo: mockRepo}
 	reader := strings.NewReader(`{"url": "https://example.com"}`)
 	request := httptest.NewRequest(http.MethodPost, "http://localhost:8080/api/shorten/", reader)
 	request.Header.Add("Content-Type", "application/json")
@@ -180,6 +152,9 @@ func BenchmarkUrlByJSON(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		request.Body = io.NopCloser(reader)
+
+		mockRepo.EXPECT().Save(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+
 		h.urlByJSON(w, request)
 		if w.Code != http.StatusCreated {
 			b.Fatalf("unexpected status code: got %d, want %d", w.Code, http.StatusCreated)
@@ -193,12 +168,10 @@ func TestBatch(t *testing.T) {
 		URL:     "short",
 	}
 	log := logger.CreateLogger()
-	store, err := storage.NewStore(conf, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	ctrl := gomock.NewController(t)
+	mockRepo := mock_repo.NewMockRepository(ctrl)
 
-	h := &handler{log: log, conf: conf, store: store}
+	h := &handler{log: log, conf: conf, repo: mockRepo}
 
 	tests := []struct {
 		name           string
@@ -232,6 +205,10 @@ func TestBatch(t *testing.T) {
 			request := httptest.NewRequest(http.MethodPost, "http://localhost:8080/api/batch", strings.NewReader(test.body))
 			request.Header.Add("Content-Type", test.contentType)
 
+			if test.contentType == "application/json" && test.body != "" {
+				mockRepo.EXPECT().SaveBatch(gomock.Any(), gomock.Any()).Return(nil)
+			}
+
 			w := httptest.NewRecorder()
 			h.batch(w, request)
 
@@ -248,8 +225,8 @@ func TestBatch(t *testing.T) {
 			}
 
 			if test.expectedStatus == http.StatusCreated {
-				var response []storage.ResMultipleURL
-				err = json.NewDecoder(res.Body).Decode(&response)
+				var response []ResMultipleURL
+				err := json.NewDecoder(res.Body).Decode(&response)
 				if err != nil {
 					t.Errorf("Error decoding response body: %v", err)
 				}
@@ -262,12 +239,10 @@ func TestBatch(t *testing.T) {
 func BenchmarkBatch(b *testing.B) {
 	conf := config.Config{Address: "localhost:8080", URL: "short"}
 	log := logger.CreateLogger()
-	store, err := storage.NewStore(conf, nil)
-	if err != nil {
-		b.Fatal(err)
-	}
+	ctrl := gomock.NewController(b)
+	mockRepo := mock_repo.NewMockRepository(ctrl)
 
-	h := &handler{log: log, conf: conf, store: store}
+	h := &handler{log: log, conf: conf, repo: mockRepo}
 	reader := strings.NewReader(`[{"original_url": "https://example.com", "correlation_id": "123456"},
 {"original_url": "https://example2.com", "correlation_id": "1234567"}]`)
 
@@ -277,6 +252,8 @@ func BenchmarkBatch(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		request.Body = io.NopCloser(reader)
+		mockRepo.EXPECT().SaveBatch(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+
 		h.batch(w, request)
 	}
 }

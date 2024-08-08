@@ -4,7 +4,7 @@ import "net/http"
 
 // getPing выполняет проверку доступности базы данных.
 func (h *handler) getPing(w http.ResponseWriter, r *http.Request) {
-	err := h.db.Ping(r.Context())
+	err := h.repo.Check(r.Context())
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return

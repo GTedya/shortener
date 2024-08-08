@@ -2,12 +2,10 @@ package handlers
 
 import (
 	"encoding/json"
-	"errors"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
 
-	"github.com/GTedya/shortener/internal/app/storage/dbstorage"
 	"github.com/GTedya/shortener/internal/app/tokenutils"
 )
 
@@ -15,20 +13,20 @@ import (
 func (h *handler) getURLByID(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 
-	shortenURL, err := h.store.GetURL(r.Context(), id)
-	if err != nil && errors.Is(err, dbstorage.ErrDeletedURL) {
+	shortenURL, err := h.repo.GetByID(r.Context(), id)
+	if shortenURL.IsDeleted && err != nil {
 		w.WriteHeader(http.StatusGone)
 		return
 	}
 	if err != nil {
-		h.log.Errorw("ID not found", id, err)
+		h.log.Errorw("ShortURL not found", id, err)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
 	w.Header().Add(contentType, "text/plain; application/json")
 
-	http.Redirect(w, r, shortenURL, http.StatusTemporaryRedirect)
+	http.Redirect(w, r, shortenURL.OriginalURL, http.StatusTemporaryRedirect)
 }
 
 // userUrls получает список сокращенных URL, принадлежащих текущему пользователю.
@@ -36,7 +34,7 @@ func (h *handler) userURLS(w http.ResponseWriter, r *http.Request) {
 	userID := tokenutils.GetUserID(r)
 	w.Header().Add(contentType, appJSON)
 
-	urls, err := h.db.UserURLS(r.Context(), userID)
+	urls, err := h.repo.GetUsersUrls(r.Context(), userID)
 	if err != nil {
 		h.log.Errorw("URL getting error", err)
 		w.WriteHeader(http.StatusBadRequest)
