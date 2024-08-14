@@ -4,11 +4,16 @@ import (
 	"fmt"
 	_ "net/http/pprof"
 
-	"github.com/GTedya/shortener/database"
+	"github.com/go-chi/chi/v5"
 
 	"github.com/GTedya/shortener/config"
+	"github.com/GTedya/shortener/internal/app/handlers"
 	"github.com/GTedya/shortener/internal/app/logger"
+	"github.com/GTedya/shortener/internal/app/middlewares"
+	pb "github.com/GTedya/shortener/internal/app/proto"
+	"github.com/GTedya/shortener/internal/app/repository"
 	"github.com/GTedya/shortener/internal/app/server"
+	"github.com/GTedya/shortener/internal/app/service"
 )
 
 var (
@@ -29,22 +34,29 @@ func main() {
 	conf := config.GetConfig()
 	// Создание логгера.
 	log := logger.CreateLogger()
+	repo := repository.GetRepo(conf)
 
-	// Инициализация базы данных.
-	db, err := database.NewDB(conf.DatabaseDSN, log)
+	handler, err := handlers.NewHandler(log, conf)
 	if err != nil {
-		log.Errorw("database creation error", err)
+		log.Errorw("handler creation error", err)
 	}
-	defer db.Close()
+	shortener := service.NewShortener(repo, &conf)
 
-	// Запуск миграций базы данных.
-	err = database.RunMigrations(conf.DatabaseDSN)
+	grpcServer, err := pb.NewGRPCServer(shortener, conf)
 	if err != nil {
-		log.Errorw("database migration error", err)
+		return
 	}
+	err = grpcServer.Run()
+	if err != nil {
+		return
+	}
+
+	middle := middlewares.Middleware{Log: log, SecretKey: conf.SecretKey, TrustedSubnet: conf.TrustedSubnet}
+
+	router := chi.NewRouter()
 
 	// Запуск сервера.
-	err = server.Start(conf, log, db)
+	err = server.Start(conf, log, router, handler, middle)
 	if err != nil {
 		log.Errorw("server starting error", err)
 	}

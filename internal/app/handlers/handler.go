@@ -2,24 +2,21 @@ package handlers
 
 import (
 	"context"
-	"fmt"
 
+	"github.com/go-chi/chi/v5"
 	"go.uber.org/zap"
 
 	"github.com/GTedya/shortener/config"
-	"github.com/GTedya/shortener/database"
 	"github.com/GTedya/shortener/internal/app/middlewares"
-	"github.com/GTedya/shortener/internal/app/storage"
-
-	"github.com/go-chi/chi/v5"
+	"github.com/GTedya/shortener/internal/app/models"
+	"github.com/GTedya/shortener/internal/app/repository"
 )
 
 // handler представляет обработчик HTTP-запросов.
 type handler struct {
-	log   *zap.SugaredLogger
-	db    database.DB
-	store Store
-	conf  config.Config
+	log  *zap.SugaredLogger
+	repo Repository
+	conf config.Config
 }
 
 // contentType представляет тип контента HTTP.
@@ -28,25 +25,24 @@ const contentType = "Content-Type"
 // appJSON представляет значение Content-Type для JSON.
 const appJSON = "application/json"
 
-// Store предоставляет интерфейс для хранилища URL.
-type Store interface {
-	// GetURL получает оригинальный URL по его сокращенной версии.
-	GetURL(ctx context.Context, shortID string) (string, error)
-
-	// SaveURL сохраняет URL в хранилище и связывает его с сокращенной версией.
-	SaveURL(ctx context.Context, token, id, shortID string) error
-
-	// Batch пакетно сохраняет URL в хранилище и связывает их с сокращенными версиями.
-	Batch(ctx context.Context, urls map[string]string) error
+// Repository saves and retrieves data from storage.
+type Repository interface {
+	Save(ctx context.Context, shortURL models.ShortURL) error
+	GetByID(ctx context.Context, id string) (models.ShortURL, error)
+	ShortenByURL(ctx context.Context, url string) (models.ShortURL, error)
+	GetUsersUrls(ctx context.Context, userID string) ([]models.ShortURL, error)
+	Close(_ context.Context) error
+	Check(ctx context.Context) error
+	SaveBatch(ctx context.Context, batch []models.ShortURL) error
+	DeleteUrls(ctx context.Context, urls []models.ShortURL) error
+	GetUsersAndUrlsCount(ctx context.Context) (int, int, error)
 }
 
 // NewHandler создает новый экземпляр обработчика HTTP-запросов.
-func NewHandler(logger *zap.SugaredLogger, conf config.Config, db database.DB) (Handler, error) {
-	store, err := storage.NewStore(conf, db)
-	if err != nil {
-		return nil, fmt.Errorf("store creation error: %w", err)
-	}
-	return &handler{log: logger, conf: conf, store: store, db: db}, nil
+func NewHandler(logger *zap.SugaredLogger, conf config.Config) (Handler, error) {
+	repo := repository.GetRepo(conf)
+
+	return &handler{log: logger, conf: conf, repo: repo}, nil
 }
 
 // Register регистрирует обработчики маршрутов HTTP в маршрутизаторе chi.
@@ -71,4 +67,7 @@ func (h *handler) Register(router *chi.Mux, middleware middlewares.Middleware) {
 
 	// Удаляет сокращенные URL пользователя.
 	router.With(middleware.AuthCheck).Delete("/api/user/urls", h.deleteUrls)
+
+	// Return statistic
+	router.With(middleware.IPCheck).Get("/api/internal/stats", h.getStats)
 }

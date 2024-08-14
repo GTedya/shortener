@@ -12,12 +12,13 @@ import (
 var ErrExitMainCheckAnalyzer = &analysis.Analyzer{
 	Name: "exitmaincheck",
 	Doc:  "check call os.Exit in func main() of package main",
-	Run:  run,
+	Run:  checkExitInMain,
 }
 
-// run is the function that performs the analysis. It iterates over the files in the pass, checks if the package
+// checkExitInMain is the function that performs the analysis.
+// It iterates over the files in the pass, checks if the package
 // is the main package, and inspects the main function for calls to os.Exit. If such a call is found, it reports it.
-func run(pass *analysis.Pass) (interface{}, error) {
+func checkExitInMain(pass *analysis.Pass) (interface{}, error) {
 	for _, file := range pass.Files {
 		// tests are generating build cache that has main package, ignoring such files
 
